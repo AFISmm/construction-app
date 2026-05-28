@@ -86,7 +86,7 @@ class RateLimitError(Exception):
 # ---------------------------------------------------------------------------
 
 def _is_rate_limited(session, user_id: int) -> bool:
-    window_start = datetime.now(timezone.utc) - timedelta(minutes=OTP_RATE_WINDOW_MINUTES)
+    window_start = datetime.utcnow() - timedelta(minutes=OTP_RATE_WINDOW_MINUTES)  # noqa: DTZ003
     recent = (
         session.query(OtpToken)
         .filter(OtpToken.user_id == user_id, OtpToken.created_at >= window_start)
@@ -103,7 +103,7 @@ def send_otp(email: str) -> None:
     email = email.strip().lower()
     token = _generate_raw_token()
     token_hash = _hash_token(token)
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MINUTES)
+    expires_at = datetime.utcnow() + timedelta(minutes=OTP_TTL_MINUTES)
 
     with get_session() as session:
         user = session.query(User).filter_by(email=email).first()
@@ -125,7 +125,7 @@ def verify_otp(email: str, token: str) -> str:
     """Return 'ok', 'expired', or 'invalid'."""
     email = email.strip().lower()
     token_hash = _hash_token(token.strip())
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
 
     with get_session() as session:
         user = session.query(User).filter_by(email=email).first()
