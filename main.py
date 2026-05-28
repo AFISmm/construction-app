@@ -103,8 +103,6 @@ def main() -> None:
         _login_page()
         return
 
-    _sidebar(user)
-
     pages = [
         st.Page("pages/project_list.py", title=t("nav.projects")),
         st.Page("pages/dashboard.py", title=t("nav.dashboard"), default=True),
@@ -117,6 +115,7 @@ def main() -> None:
         st.Page("pages/project_form.py", title=t("project.create_title")),
     ]
     pg = st.navigation(pages, position="hidden")
+    _sidebar(user)
     pg.run()
 
 
