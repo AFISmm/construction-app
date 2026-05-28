@@ -1,0 +1,29 @@
+# Secrets — NUNCA subir al repositorio
+.streamlit/secrets.toml
+secrets.toml
+.env
+*.env
+
+# Base de datos local
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Streamlit cache
+.streamlit/cache/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
