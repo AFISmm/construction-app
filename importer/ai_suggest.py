@@ -1,4 +1,4 @@
-"""Use Claude API to suggest taxonomy categories for low-confidence import rows."""
+"""Suggest taxonomy categories for low-confidence import rows via OpenRouter."""
 from __future__ import annotations
 
 import json
@@ -7,19 +7,22 @@ import streamlit as st
 
 
 def suggest_categories(descriptions: list[str], categories: list) -> dict[str, str | None]:
-    """Return {description: category_code} using Claude. Returns {} if API key missing."""
+    """Return {description: category_code}. Returns {} if API key missing."""
     api_key = st.secrets.get("anthropic", {}).get("api_key", "")
     if not api_key:
         return {}
 
-    import anthropic
+    from openai import OpenAI
 
     cat_list = "\n".join(f"- {c.code}: {c.name}" for c in categories)
     descriptions_text = "\n".join(f"{i + 1}. {d}" for i, d in enumerate(descriptions))
 
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://openrouter.ai/api/v1",
+    )
+    response = client.chat.completions.create(
+        model="anthropic/claude-haiku-4-5",
         max_tokens=1024,
         messages=[{
             "role": "user",
@@ -37,7 +40,7 @@ def suggest_categories(descriptions: list[str], categories: list) -> dict[str, s
     )
 
     try:
-        text = message.content[0].text.strip()
+        text = response.choices[0].message.content.strip()
         if "```" in text:
             text = text.split("```")[1]
             if text.startswith("json"):
