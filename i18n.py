@@ -6,7 +6,7 @@ from pathlib import Path
 
 import streamlit as st
 
-_TRANSLATIONS_DIR = Path(__file__).parent.parent.parent / "translations"
+_TRANSLATIONS_DIR = Path(__file__).parent / "translations"
 _cache: dict[str, dict[str, str]] = {}
 ALLOWED_LANGS: frozenset[str] = frozenset({"es", "en"})
 

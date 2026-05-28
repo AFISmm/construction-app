@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from .auth import get_current_user, logout, send_otp, verify_otp
+from .auth import RateLimitError, get_current_user, logout, send_otp, verify_otp
 from .db import init_db, seed_categories
 from .i18n import language_toggle, t
 from .projects import project_selector_sidebar
@@ -27,6 +27,7 @@ def _sidebar(user: dict) -> None:
             st.session_state["_edit_project_id"] = None
             st.switch_page("pages/project_form.py")
         st.divider()
+        st.page_link("pages/project_list.py", label=t("nav.projects"))
         st.page_link("pages/dashboard.py", label=t("nav.dashboard"))
         st.page_link("pages/budget.py", label=t("nav.budget"))
         st.page_link("pages/expenses.py", label=t("nav.expenses"))
@@ -57,6 +58,8 @@ def _login_page() -> None:
                     st.session_state["_pending_email"] = email
                     st.session_state["_auth_step"] = "otp"
                     st.rerun()
+                except RateLimitError:
+                    st.error(t("auth.otp_rate_limited"))
                 except Exception:
                     st.error(t("error.server"))
 
@@ -80,6 +83,8 @@ def _login_page() -> None:
             try:
                 send_otp(email)
                 st.info(t("auth.otp_sent", email=email))
+            except RateLimitError:
+                st.error(t("auth.otp_rate_limited"))
             except Exception:
                 st.error(t("error.server"))
 
@@ -94,6 +99,7 @@ def main() -> None:
     _sidebar(user)
 
     pages = [
+        st.Page("pages/project_list.py", title=t("nav.projects")),
         st.Page("pages/dashboard.py", title=t("nav.dashboard"), default=True),
         st.Page("pages/budget.py", title=t("nav.budget")),
         st.Page("pages/expenses.py", title=t("nav.expenses")),

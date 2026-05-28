@@ -20,6 +20,13 @@ ACCEPTED_MIME = {
 # Summary-row patterns to skip
 _SKIP_PATTERNS = ("total", "subtotal", "grand total", "suma", "gran total")
 
+# Header-row patterns — column label words that indicate a header rather than data
+_HEADER_PATTERNS = (
+    "description", "descripcion", "descripción", "item", "concepto",
+    "amount", "monto", "valor", "price", "precio", "category", "categoria",
+    "categoría", "name", "nombre",
+)
+
 
 @dataclass
 class ParsedRow:
@@ -88,6 +95,11 @@ def _is_summary_row(values: list) -> bool:
     return any(pat in combined for pat in _SKIP_PATTERNS)
 
 
+def _is_header_row(values: list) -> bool:
+    combined = " ".join(str(v).lower() for v in values if v and str(v).strip())
+    return any(pat in combined for pat in _HEADER_PATTERNS)
+
+
 def _detect_desc_col(df: pd.DataFrame) -> int:
     """Return the column index most likely to contain descriptions (longest avg string)."""
     best, best_col = 0.0, 0
@@ -116,6 +128,8 @@ def _extract_rows(df: pd.DataFrame) -> list[ParsedRow]:
 
     for row_idx, row in df.iterrows():
         values = row.tolist()
+        if int(row_idx) == 0 and _is_header_row(values):
+            continue
         if _is_summary_row(values):
             continue
         raw_desc = str(row.iloc[desc_col]).strip() if desc_col < len(row) else ""

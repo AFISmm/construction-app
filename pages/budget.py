@@ -50,8 +50,14 @@ else:
         top = line.category_code.split(".")[0]
         groups.setdefault(top, []).append(line)
 
+    # Build top-level category name map (level == 1 entries have no dot in code)
+    top_cat_names: dict[str, str] = {
+        c.code: c.name for c in get_all_categories() if c.level == 1
+    }
+
     for top_code, group_lines in sorted(groups.items()):
-        st.subheader(top_code)
+        cat_label = top_cat_names.get(top_code, top_code)
+        st.subheader(f"{top_code} — {cat_label}")
         for line in group_lines:
             spent = get_line_spent(line.id)
             col_cat, col_desc, col_room, col_bud, col_spent, col_del = st.columns([2, 2, 1, 1, 1, 0.5])

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -11,6 +12,8 @@ from .db import OtpToken, User, get_session
 
 MAX_ATTEMPTS = 5
 OTP_TTL_MINUTES = 10
+MAX_OTP_REQUESTS = 3        # max OTP sends per window per email
+OTP_RATE_WINDOW_MINUTES = 15
 
 
 # ---------------------------------------------------------------------------
@@ -18,7 +21,8 @@ OTP_TTL_MINUTES = 10
 # ---------------------------------------------------------------------------
 
 def _hash_token(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
+    secret = st.secrets.get("app", {}).get("secret_key", "dev-secret")
+    return hmac.new(secret.encode(), token.encode(), hashlib.sha256).hexdigest()
 
 
 def _generate_raw_token() -> str:
@@ -67,6 +71,28 @@ def _send_email(to_email: str, token: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Exceptions
+# ---------------------------------------------------------------------------
+
+class RateLimitError(Exception):
+    pass
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+def _is_rate_limited(session, user_id: int) -> bool:
+    window_start = datetime.now(timezone.utc) - timedelta(minutes=OTP_RATE_WINDOW_MINUTES)
+    recent = (
+        session.query(OtpToken)
+        .filter(OtpToken.user_id == user_id, OtpToken.created_at >= window_start)
+        .count()
+    )
+    return recent >= MAX_OTP_REQUESTS
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -82,6 +108,9 @@ def send_otp(email: str) -> None:
             user = User(email=email)
             session.add(user)
             session.flush()
+
+        if user.id and _is_rate_limited(session, user.id):
+            raise RateLimitError()
 
         session.query(OtpToken).filter_by(user_id=user.id, used=False).update({"used": True})
         session.add(OtpToken(user_id=user.id, token_hash=token_hash, expires_at=expires_at))
