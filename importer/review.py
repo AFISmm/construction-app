@@ -143,14 +143,17 @@ def _step_review(project_id: int) -> None:
             pending_overrides[row["id"]] = cat_map.get(selected) if selected else None
 
             if has_api_key and c_ai.button("🤖", key=f"ai_{row['id']}", help=t("import.ai_suggest_button")):
-                with st.spinner(""):
-                    from importer.ai_suggest import suggest_categories
-                    suggestions = suggest_categories([row["desc"]], categories)
-                    code = suggestions.get(row["desc"])
+                with st.spinner(t("import.ai_suggest_loading")):
+                    from importer.ai_suggest import suggest_category
+                    code = suggest_category(row["desc"], categories)
                     if code:
                         label = next((k for k, v in cat_map.items() if v == code), "")
                         if label:
                             st.session_state[f"override_{row['id']}"] = label
+                        else:
+                            st.warning(f"Código IA '{code}' no encontrado en categorías.")
+                    else:
+                        st.warning("La IA no pudo asignar una categoría.")
                 st.rerun()
         else:
             matched_label = next((k for k, v in cat_map.items() if v == row["code"]), "—")
