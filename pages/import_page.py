@@ -11,8 +11,5 @@ if not project_id:
 
 st.title(t("import.title"))
 
-try:
-    from import_.review import run_import_page
-    run_import_page(project_id)
-except ImportError:
-    st.info("Import pipeline not yet available. Run instruction 009 to install Isabela's module.")
+from importer.review import run_import_page
+run_import_page(project_id)
