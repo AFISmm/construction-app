@@ -97,41 +97,36 @@ def _step_review(project_id: int) -> None:
         ]
 
     categories = get_all_categories()
-    cat_options = [""] + [f"{c.code} — {c.name}" for c in categories]
-    cat_map = {f"{c.code} — {c.name}": c.code for c in categories}
 
+    def _cat_label(c) -> str:
+        translated = t(f"cat.{c.code}")
+        name = translated if translated != f"cat.{c.code}" else c.name
+        return f"{c.code} — {name}"
+
+    cat_options = [""] + [_cat_label(c) for c in categories]
+    cat_map = {_cat_label(c): c.code for c in categories}
+
+    has_api_key = bool(st.secrets.get("anthropic", {}).get("api_key", ""))
     flagged_ids: list[int] = []
     pending_overrides: dict[int, Optional[str]] = {}
 
     flagged_rows = [r for r in row_data if r["confidence"] < LOW_CONFIDENCE_THRESHOLD]
     if flagged_rows:
         st.warning(t("import.low_confidence_warning"))
-        has_api_key = bool(st.secrets.get("anthropic", {}).get("api_key", ""))
-        if has_api_key:
-            if st.button("🤖 " + t("import.ai_suggest_button")):
-                with st.spinner(t("import.ai_suggest_loading")):
-                    from importer.ai_suggest import suggest_categories
-                    descs = [r["desc"] for r in flagged_rows]
-                    suggestions = suggest_categories(descs, [c for c in categories if c is not None])
-                    for row in flagged_rows:
-                        code = suggestions.get(row["desc"])
-                        if code:
-                            label = next((k for k, v in cat_map.items() if v == code), "")
-                            if label:
-                                st.session_state[f"override_{row['id']}"] = label
-                st.rerun()
 
     # Column headers
-    h_desc, h_cat = st.columns([4, 4])
+    h_desc, h_cat, h_ai = st.columns([4, 3.5, 0.5])
     h_desc.markdown(f"**{t('import.col_original')}**")
     h_cat.markdown(f"**{t('import.col_category')}**")
+    if has_api_key:
+        h_ai.markdown("**IA**")
     st.divider()
 
     for row in row_data:
         conf = row["confidence"]
         flag = conf < LOW_CONFIDENCE_THRESHOLD
         marker = ":orange[⚠]" if flag else ":green[✓]"
-        c_desc, c_cat = st.columns([4, 4])
+        c_desc, c_cat, c_ai = st.columns([4, 3.5, 0.5])
         c_desc.write(f"{marker} {row['desc']}")
 
         if flag:
@@ -146,6 +141,17 @@ def _step_review(project_id: int) -> None:
                 label_visibility="collapsed",
             )
             pending_overrides[row["id"]] = cat_map.get(selected) if selected else None
+
+            if has_api_key and c_ai.button("🤖", key=f"ai_{row['id']}", help=t("import.ai_suggest_button")):
+                with st.spinner(""):
+                    from importer.ai_suggest import suggest_categories
+                    suggestions = suggest_categories([row["desc"]], categories)
+                    code = suggestions.get(row["desc"])
+                    if code:
+                        label = next((k for k, v in cat_map.items() if v == code), "")
+                        if label:
+                            st.session_state[f"override_{row['id']}"] = label
+                st.rerun()
         else:
             matched_label = next((k for k, v in cat_map.items() if v == row["code"]), "—")
             c_cat.write(matched_label)
