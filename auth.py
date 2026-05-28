@@ -8,9 +8,10 @@ from datetime import datetime, timedelta, timezone
 
 import streamlit as st
 
-from db import OtpToken, User, get_session
+from db import OtpToken, User, UserSession, get_session
 
 MAX_ATTEMPTS = 5
+SESSION_TTL_DAYS = 30
 OTP_TTL_MINUTES = 10
 MAX_OTP_REQUESTS = 3        # max OTP sends per window per email
 OTP_RATE_WINDOW_MINUTES = 15
@@ -169,6 +170,32 @@ def require_auth() -> dict:
     if not user:
         st.stop()
     return user
+
+
+def create_persistent_session(user_id: int) -> str:
+    token = secrets.token_hex(32)
+    expires_at = datetime.utcnow() + timedelta(days=SESSION_TTL_DAYS)
+    with get_session() as session:
+        session.add(UserSession(user_id=user_id, session_token=token, expires_at=expires_at))
+    return token
+
+
+def validate_persistent_session(token: str) -> dict | None:
+    with get_session() as session:
+        us = session.query(UserSession).filter_by(session_token=token).first()
+        if not us or us.expires_at <= datetime.utcnow():
+            return None
+        user = session.get(User, us.user_id)
+        if not user:
+            return None
+        return {"id": user.id, "email": user.email}
+
+
+def invalidate_persistent_session(token: str) -> None:
+    with get_session() as session:
+        us = session.query(UserSession).filter_by(session_token=token).first()
+        if us:
+            session.delete(us)
 
 
 def logout() -> None:

@@ -97,8 +97,23 @@ def _step_review(project_id: int) -> None:
     flagged_ids: list[int] = []
     pending_overrides: dict[int, Optional[str]] = {}
 
-    if any(r["confidence"] < LOW_CONFIDENCE_THRESHOLD for r in row_data):
+    flagged_rows = [r for r in row_data if r["confidence"] < LOW_CONFIDENCE_THRESHOLD]
+    if flagged_rows:
         st.warning(t("import.low_confidence_warning"))
+        has_api_key = bool(st.secrets.get("anthropic", {}).get("api_key", ""))
+        if has_api_key:
+            if st.button("🤖 " + t("import.ai_suggest_button")):
+                with st.spinner(t("import.ai_suggest_loading")):
+                    from importer.ai_suggest import suggest_categories
+                    descs = [r["desc"] for r in flagged_rows]
+                    suggestions = suggest_categories(descs, [c for c in categories if c is not None])
+                    for row in flagged_rows:
+                        code = suggestions.get(row["desc"])
+                        if code:
+                            label = next((k for k, v in cat_map.items() if v == code), "")
+                            if label:
+                                st.session_state[f"override_{row['id']}"] = label
+                st.rerun()
 
     for row in row_data:
         conf = row["confidence"]
