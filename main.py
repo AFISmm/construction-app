@@ -13,9 +13,16 @@ st.set_page_config(page_title="Control de Presupuesto", layout="wide", initial_s
 
 def _bootstrap() -> None:
     if not st.session_state.get("_db_ready"):
-        init_db()
-        seed_categories()
-        st.session_state["_db_ready"] = True
+        import re
+        raw_url = st.secrets.get("database", {}).get("url", "NOT SET")
+        masked = re.sub(r":([^:@]+)@", ":***@", str(raw_url))
+        try:
+            init_db()
+            seed_categories()
+            st.session_state["_db_ready"] = True
+        except Exception as e:
+            st.error(f"**DB URL usado:** `{masked}`\n\n**Error:** {e}")
+            st.stop()
 
 
 def _sidebar(user: dict) -> None:
