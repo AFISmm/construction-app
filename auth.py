@@ -54,19 +54,22 @@ def _send_email(to_email: str, token: str) -> None:
         urllib.request.urlopen(req)
     else:
         import smtplib
+        import sys
         from email.mime.text import MIMEText
-        msg = MIMEText(f"Tu codigo de acceso: {token}\nValido por {OTP_TTL_MINUTES} minutos.")
-        msg["Subject"] = "Codigo de acceso"
-        msg["From"] = cfg.get("from_address", "noreply@localhost")
-        msg["To"] = to_email
         host = cfg.get("smtp_host", cfg.get("host", "localhost"))
         port = int(cfg.get("smtp_port", cfg.get("port", 587)))
         user = cfg.get("smtp_user", cfg.get("username", ""))
         password = cfg.get("smtp_password", cfg.get("password", ""))
+        if not user or user == "PENDIENTE" or not password or password == "PENDIENTE":
+            print(f"\n[DEV MODE] OTP para {to_email}: {token}\n", file=sys.stderr, flush=True)
+            return
+        msg = MIMEText(f"Tu codigo de acceso: {token}\nValido por {OTP_TTL_MINUTES} minutos.")
+        msg["Subject"] = "Codigo de acceso"
+        msg["From"] = cfg.get("from_address", "noreply@localhost")
+        msg["To"] = to_email
         with smtplib.SMTP(host, port) as s:
             s.starttls()
-            if user:
-                s.login(user, password)
+            s.login(user, password)
             s.send_message(msg)
 
 
