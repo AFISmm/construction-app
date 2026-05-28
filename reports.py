@@ -46,4 +46,6 @@ def chart_data(project_id: int) -> pd.DataFrame:
     totals = get_category_totals(project_id)
     rows = [{"Categoria": ct.code, t("report.planned"): ct.budgeted, t("report.actual"): ct.spent}
             for ct in totals if ct.level == 1]
+    if not rows:
+        return pd.DataFrame(columns=["Categoria", t("report.planned"), t("report.actual")]).set_index("Categoria")
     return pd.DataFrame(rows).set_index("Categoria")
