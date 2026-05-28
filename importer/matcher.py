@@ -38,7 +38,7 @@ def _normalize(text: str) -> str:
 @lru_cache(maxsize=1)
 def _load_corpus() -> list[dict]:
     """Load taxonomy corpus from db (cached for session lifetime)."""
-    from app.db import Category, get_session
+    from db import Category, get_session
     with get_session() as session:
         cats = session.query(Category).all()
         return [
