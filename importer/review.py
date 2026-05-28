@@ -18,18 +18,6 @@ from importer.parser import FileValidationError, ParsedRow, validate_and_parse
 def run_import_page(project_id: int) -> None:
     step = st.session_state.get("_import_step", "upload")
 
-    col1, col2, col3 = st.columns(3)
-    for col, label, active_step in [
-        (col1, t("import.upload_label"), "upload"),
-        (col2, t("import.preview_title"), "review"),
-        (col3, t("common.confirm"), "confirm"),
-    ]:
-        if step == active_step:
-            col.markdown(f"**✅ {label}**")
-        else:
-            col.markdown(f"<span style='color:gray'>{label}</span>", unsafe_allow_html=True)
-    st.divider()
-
     if step == "upload":
         _step_upload(project_id)
     elif step == "review":
