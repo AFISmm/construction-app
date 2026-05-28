@@ -37,18 +37,18 @@ def t(key: str, **kwargs) -> str:
 
 def language_toggle() -> None:
     current = st.session_state.get("lang", "es")
-    options = ["es", "en"]
-    idx = options.index(current) if current in options else 0
-    selected = st.radio(
+    labels = ["🇪🇸 Español", "🇺🇸 English"]
+    codes = ["es", "en"]
+    idx = codes.index(current) if current in codes else 0
+    selected_label = st.radio(
         t("nav.language_toggle"),
-        options,
+        labels,
         index=idx,
         horizontal=True,
         key="_lang_radio",
         label_visibility="collapsed",
     )
-    if selected not in ALLOWED_LANGS:
-        selected = "es"
+    selected = codes[labels.index(selected_label)]
     if selected != st.session_state.get("lang"):
         st.session_state["lang"] = selected
         _cache.clear()
