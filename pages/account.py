@@ -1,7 +1,7 @@
 """User Management / Account page."""
 import streamlit as st
-from app.auth import logout, require_auth
-from app.i18n import t
+from auth import logout, require_auth
+from i18n import t
 
 user = require_auth()
 

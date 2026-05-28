@@ -2,9 +2,9 @@
 from datetime import date
 
 import streamlit as st
-from app.auth import require_auth
-from app.expenses import create_expense, delete_expense, get_budget_lines_for_project, get_expenses, get_line_spent
-from app.i18n import t
+from auth import require_auth
+from expenses import create_expense, delete_expense, get_budget_lines_for_project, get_expenses, get_line_spent
+from i18n import t
 
 user = require_auth()
 project_id = st.session_state.get("current_project_id")

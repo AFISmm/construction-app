@@ -1,9 +1,10 @@
 """Budget Setup page — CRUD for budget lines per category."""
 import streamlit as st
-from app.auth import require_auth
-from app.budget import create_budget_line, delete_budget_line, get_all_categories, get_budget_lines, get_line_spent
-from app.db import Room, get_session
-from app.i18n import t
+from auth import require_auth
+from budget import create_budget_line, delete_budget_line, get_all_categories, get_budget_lines
+from expenses import get_line_spent
+from db import Room, get_session
+from i18n import t
 
 user = require_auth()
 project_id = st.session_state.get("current_project_id")

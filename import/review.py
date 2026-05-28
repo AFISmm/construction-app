@@ -7,9 +7,9 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-from app.budget import get_all_categories
-from app.db import BudgetLine, ImportJob, ImportRow, get_session
-from app.i18n import t
+from budget import get_all_categories
+from db import BudgetLine, ImportJob, ImportRow, get_session
+from i18n import t
 
 from .matcher import LOW_CONFIDENCE_THRESHOLD, MatchResult, match_batch
 from .parser import FileValidationError, ParsedRow, validate_and_parse

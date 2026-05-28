@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 import streamlit as st
 
-from .db import OtpToken, User, get_session
+from db import OtpToken, User, get_session
 
 MAX_ATTEMPTS = 5
 OTP_TTL_MINUTES = 10

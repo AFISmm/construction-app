@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import streamlit as st
 
-from .auth import RateLimitError, get_current_user, logout, send_otp, verify_otp
-from .db import init_db, seed_categories
-from .i18n import language_toggle, t
-from .projects import project_selector_sidebar
+from auth import RateLimitError, get_current_user, logout, send_otp, verify_otp
+from db import init_db, seed_categories
+from i18n import language_toggle, t
+from projects import project_selector_sidebar
 
 st.set_page_config(page_title="Control de Presupuesto", layout="wide", initial_sidebar_state="expanded")
 

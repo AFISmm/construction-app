@@ -1,9 +1,9 @@
 """Project Dashboard page."""
 import streamlit as st
-from app.auth import require_auth
-from app.i18n import t
-from app.projects import get_project_summary
-from app.reports import chart_data
+from auth import require_auth
+from i18n import t
+from projects import get_project_summary
+from reports import chart_data
 
 user = require_auth()
 project_id = st.session_state.get("current_project_id")

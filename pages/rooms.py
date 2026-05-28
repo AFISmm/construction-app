@@ -1,10 +1,10 @@
 """Room Detail page — budget and expenses per room."""
 import streamlit as st
-from app.auth import require_auth
-from app.budget import get_budget_lines
-from app.db import Room, get_session
-from app.expenses import get_expenses, get_line_spent
-from app.i18n import t
+from auth import require_auth
+from budget import get_budget_lines
+from db import Room, get_session
+from expenses import get_expenses, get_line_spent
+from i18n import t
 
 user = require_auth()
 project_id = st.session_state.get("current_project_id")

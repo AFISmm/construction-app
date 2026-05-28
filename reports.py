@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from .budget import get_category_totals
-from .i18n import t
+from budget import get_category_totals
+from i18n import t
 
 if TYPE_CHECKING:
     from .projects import ProjectSummary

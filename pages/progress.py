@@ -1,9 +1,9 @@
 """Progress View — charts, variance table, and export."""
 import streamlit as st
-from app.auth import require_auth
-from app.i18n import t
-from app.projects import get_project_summary
-from app.reports import build_variance_df, chart_data, export_csv, export_xlsx
+from auth import require_auth
+from i18n import t
+from projects import get_project_summary
+from reports import build_variance_df, chart_data, export_csv, export_xlsx
 
 user = require_auth()
 project_id = st.session_state.get("current_project_id")
@@ -51,9 +51,9 @@ col_xlsx.download_button(t("report.export_xlsx"), export_xlsx(project_id),
 st.divider()
 st.subheader(t("room.title"))
 
-from app.db import Room, get_session
-from app.budget import get_budget_lines
-from app.expenses import get_line_spent
+from db import Room, get_session
+from budget import get_budget_lines
+from expenses import get_line_spent
 import pandas as pd
 
 with get_session() as session:

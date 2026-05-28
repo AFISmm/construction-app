@@ -6,7 +6,7 @@ from typing import Optional
 
 from sqlalchemy import func as sqlfunc
 
-from .db import BudgetLine, Expense, get_session
+from db import BudgetLine, Expense, get_session
 
 
 def get_expenses(project_id: int, budget_line_id: Optional[int] = None) -> list[Expense]:

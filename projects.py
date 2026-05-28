@@ -6,7 +6,7 @@ from typing import Optional
 
 import streamlit as st
 
-from .db import Project, get_session
+from db import Project, get_session
 
 
 @dataclass
@@ -73,7 +73,7 @@ def delete_project(project_id: int, user_id: int) -> bool:
 
 def get_project_summary(project_id: int) -> Optional[ProjectSummary]:
     from sqlalchemy import func as sqlfunc
-    from .db import BudgetLine, Expense
+    from db import BudgetLine, Expense
 
     with get_session() as session:
         project = session.get(Project, project_id)
@@ -94,7 +94,7 @@ def get_project_summary(project_id: int) -> Optional[ProjectSummary]:
 
 
 def project_selector_sidebar(user_id: int) -> Optional[int]:
-    from .i18n import t
+    from i18n import t
 
     projects = get_user_projects(user_id)
     if not projects:

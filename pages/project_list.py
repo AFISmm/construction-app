@@ -1,9 +1,9 @@
 """Project List page — overview of all user projects."""
 import streamlit as st
 
-from app.auth import require_auth
-from app.i18n import t
-from app.projects import get_project_summary, get_user_projects
+from auth import require_auth
+from i18n import t
+from projects import get_project_summary, get_user_projects
 
 user = require_auth()
 

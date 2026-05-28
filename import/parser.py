@@ -8,7 +8,7 @@ from typing import Optional
 import pandas as pd
 import streamlit as st
 
-from app.i18n import t
+from i18n import t
 
 ACCEPTED_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 ACCEPTED_MIME = {

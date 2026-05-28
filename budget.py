@@ -6,7 +6,7 @@ from typing import Optional
 
 from sqlalchemy import func as sqlfunc
 
-from .db import BudgetLine, Category, Expense, Room, get_session
+from db import BudgetLine, Category, Expense, Room, get_session
 
 
 @dataclass

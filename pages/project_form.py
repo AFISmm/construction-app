@@ -1,8 +1,8 @@
 """Project Create / Edit page."""
 import streamlit as st
-from app.auth import require_auth
-from app.i18n import t
-from app.projects import create_project, get_project, update_project
+from auth import require_auth
+from i18n import t
+from projects import create_project, get_project, update_project
 
 user = require_auth()
 edit_id = st.session_state.get("_edit_project_id")
