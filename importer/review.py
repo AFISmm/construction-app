@@ -19,9 +19,15 @@ def run_import_page(project_id: int) -> None:
     step = st.session_state.get("_import_step", "upload")
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("1", t("import.upload_label"), delta="active" if step == "upload" else "")
-    col2.metric("2", t("import.preview_title"), delta="active" if step == "review" else "")
-    col3.metric("3", t("common.confirm"), delta="active" if step == "confirm" else "")
+    for col, label, active_step in [
+        (col1, t("import.upload_label"), "upload"),
+        (col2, t("import.preview_title"), "review"),
+        (col3, t("common.confirm"), "confirm"),
+    ]:
+        if step == active_step:
+            col.markdown(f"**✅ {label}**")
+        else:
+            col.markdown(f"<span style='color:gray'>{label}</span>", unsafe_allow_html=True)
     st.divider()
 
     if step == "upload":
@@ -115,12 +121,20 @@ def _step_review(project_id: int) -> None:
                                 st.session_state[f"override_{row['id']}"] = label
                 st.rerun()
 
+    # Column headers
+    h_desc, h_cat, h_conf, h_override = st.columns([3, 2, 1, 2])
+    h_desc.markdown(f"**{t('import.col_original')}**")
+    h_cat.markdown(f"**{t('import.col_category')}**")
+    h_conf.markdown(f"**{t('import.col_confidence')}**")
+    h_override.markdown(f"**{t('import.col_override')}**")
+    st.divider()
+
     for row in row_data:
         conf = row["confidence"]
         flag = conf < LOW_CONFIDENCE_THRESHOLD
-        label = f":orange[>>]" if flag else ""
+        marker = ":orange[⚠]" if flag else ":green[✓]"
         c_desc, c_cat, c_conf, c_override = st.columns([3, 2, 1, 2])
-        c_desc.write(f"{label} {row['desc']}")
+        c_desc.write(f"{marker} {row['desc']}")
         c_cat.write(row["code"] or "—")
         c_conf.write(f"{conf:.0%}")
 
@@ -136,6 +150,9 @@ def _step_review(project_id: int) -> None:
                 label_visibility="collapsed",
             )
             pending_overrides[row["id"]] = cat_map.get(selected) if selected else None
+        else:
+            matched_label = next((k for k, v in cat_map.items() if v == row["code"]), "—")
+            c_override.write(matched_label)
 
     unresolved = sum(1 for rid in flagged_ids if not pending_overrides.get(rid))
     col_confirm, col_cancel = st.columns(2)
