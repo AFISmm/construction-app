@@ -15,8 +15,5 @@ rapidfuzz==3.13.0
 # Utilities
 python-dateutil==2.9.0
 
-# Session persistence
-streamlit-cookies-controller>=0.0.4
-
 # AI suggestions (import pipeline via OpenRouter)
 openai>=1.0.0

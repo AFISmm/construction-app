@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import streamlit as st
-from cookies_controller import CookieController
 
 from auth import (
     RateLimitError, create_persistent_session, get_current_user,
@@ -13,15 +12,13 @@ from db import init_db, seed_categories
 from i18n import language_toggle, t
 from projects import project_selector_sidebar
 
-_cookie = CookieController()
-
 st.set_page_config(page_title="Control de Presupuesto", layout="wide", initial_sidebar_state="expanded")
 
 
 def _restore_session() -> None:
     if "user_id" in st.session_state:
         return
-    token = _cookie.get("session_token")
+    token = st.query_params.get("s")
     if not token:
         return
     user = validate_persistent_session(token)
@@ -29,7 +26,7 @@ def _restore_session() -> None:
         st.session_state["user_id"] = user["id"]
         st.session_state["user_email"] = user["email"]
     else:
-        _cookie.remove("session_token")
+        st.query_params.pop("s", None)
 
 
 def _bootstrap() -> None:
@@ -66,10 +63,10 @@ def _sidebar(user: dict) -> None:
         st.divider()
         st.caption(user["email"])
         if st.button(t("nav.logout"), use_container_width=True):
-            token = _cookie.get("session_token")
+            token = st.query_params.get("s")
             if token:
                 invalidate_persistent_session(token)
-                _cookie.remove("session_token")
+                st.query_params.pop("s", None)
             logout()
 
 
@@ -107,7 +104,7 @@ def _login_page() -> None:
                 st.session_state.pop("_auth_step", None)
                 st.session_state.pop("_pending_email", None)
                 token = create_persistent_session(st.session_state["user_id"])
-                _cookie.set("session_token", token, max_age=30 * 24 * 3600)
+                st.query_params["s"] = token
                 st.rerun()
             elif result == "expired":
                 st.error(t("auth.otp_expired"))
