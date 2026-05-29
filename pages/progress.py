@@ -16,8 +16,9 @@ st.title(t("report.title"))
 
 if summary:
     pct = summary.pct_executed / 100
+    pct_safe = max(0.0, min(float(pct), 1.0))
     st.subheader(t("report.gauge_title"))
-    st.progress(min(pct, 1.0))
+    st.progress(pct_safe)
     st.caption(f"{summary.pct_executed}% — {summary.currency} {summary.total_spent:,.0f} / {summary.total_budgeted:,.0f}")
 
 st.subheader(t("report.chart_title"))
