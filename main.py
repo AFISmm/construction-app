@@ -59,44 +59,25 @@ _HIDE_CHROME = """
 
 
 def _flag_links() -> None:
-    """Inject flag images into the parent DOM via components.html — reliable fixed positioning."""
-    current_lang = st.session_state.get("lang", "es")
-    token = st.query_params.get("s", "")
-    s_param = f"&s={token}" if token else ""
-    es_op = "1.0" if current_lang == "es" else "0.3"
-    en_op = "1.0" if current_lang == "en" else "0.3"
-
-    # Also hide Streamlit chrome via markdown
+    """Hide Streamlit chrome."""
     st.markdown(_HIDE_CHROME, unsafe_allow_html=True)
-
-    _components.html(f"""
-    <script>
-    (function() {{
-        var parent = window.parent.document;
-        var el = parent.getElementById('lang-flags');
-        if (!el) {{
-            el = parent.createElement('div');
-            el.id = 'lang-flags';
-            el.style.cssText = 'position:fixed;top:12px;right:16px;z-index:99999;display:flex;gap:8px;align-items:center;';
-            parent.body.appendChild(el);
-        }}
-        el.innerHTML = `
-            <a href="?lang=es{s_param}" target="_parent" style="text-decoration:none;opacity:{es_op};">
-                <img src="https://flagcdn.com/w40/es.png" width="30"
-                     style="border-radius:3px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.3);">
-            </a>
-            <a href="?lang=en{s_param}" target="_parent" style="text-decoration:none;opacity:{en_op};">
-                <img src="https://flagcdn.com/w40/us.png" width="30"
-                     style="border-radius:3px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.3);">
-            </a>`;
-    }})();
-    </script>
-    """, height=0, scrolling=False)
 
 
 def _sidebar(user: dict) -> None:
     allowed = get_allowed_pages(user["id"])
     with st.sidebar:
+        # Language toggle — flag buttons at the top
+        current_lang = st.session_state.get("lang", "es")
+        col_es, col_en = st.columns(2)
+        if col_es.button("🇪🇸 ES", type="primary" if current_lang == "es" else "secondary",
+                         use_container_width=True, key="lang_es"):
+            set_language("es")
+            st.rerun()
+        if col_en.button("🇺🇸 EN", type="primary" if current_lang == "en" else "secondary",
+                         use_container_width=True, key="lang_en"):
+            set_language("en")
+            st.rerun()
+        st.divider()
         # Project selector (read-only display + dropdown to switch)
         project_selector_sidebar(user["id"])
         if st.button(t("nav.new_project"), use_container_width=True):
@@ -147,32 +128,17 @@ def _login_page() -> None:
         st.rerun()
 
     current_lang = st.session_state.get("lang", "es")
-    es_op = "1.0" if current_lang == "es" else "0.3"
-    en_op = "1.0" if current_lang == "en" else "0.3"
-    st.markdown(_HIDE_CHROME, unsafe_allow_html=True)
-    _components.html(f"""
-    <script>
-    (function() {{
-        var parent = window.parent.document;
-        var el = parent.getElementById('lang-flags');
-        if (!el) {{
-            el = parent.createElement('div');
-            el.id = 'lang-flags';
-            el.style.cssText = 'position:fixed;top:12px;right:16px;z-index:99999;display:flex;gap:8px;align-items:center;';
-            parent.body.appendChild(el);
-        }}
-        el.innerHTML = `
-            <a href="?lang=es" target="_parent" style="text-decoration:none;opacity:{es_op};">
-                <img src="https://flagcdn.com/w40/es.png" width="30"
-                     style="border-radius:3px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.3);">
-            </a>
-            <a href="?lang=en" target="_parent" style="text-decoration:none;opacity:{en_op};">
-                <img src="https://flagcdn.com/w40/us.png" width="30"
-                     style="border-radius:3px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.3);">
-            </a>`;
-    }})();
-    </script>
-    """, height=0, scrolling=False)
+    _, c_es, c_en = st.columns([6, 1, 1])
+    if c_es.button("🇪🇸", key="login_es",
+                   type="primary" if current_lang == "es" else "secondary",
+                   use_container_width=True):
+        set_language("es")
+        st.rerun()
+    if c_en.button("🇺🇸", key="login_en",
+                   type="primary" if current_lang == "en" else "secondary",
+                   use_container_width=True):
+        set_language("en")
+        st.rerun()
 
     st.title(t("auth.page_title"))
     _, form_col, _ = st.columns([1, 2, 1])
