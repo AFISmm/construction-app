@@ -73,22 +73,36 @@ def _sidebar(user: dict) -> None:
 
 
 def _login_page() -> None:
-    # Hide sidebar on login page
+    # Hide sidebar, header and Streamlit toolbar
     st.markdown("""
         <style>
-            [data-testid="stSidebar"] { display: none; }
-            [data-testid="collapsedControl"] { display: none; }
+            [data-testid="stSidebar"]    { display: none !important; }
+            [data-testid="collapsedControl"] { display: none !important; }
+            header[data-testid="stHeader"]   { display: none !important; }
+            #MainMenu                        { display: none !important; }
+            .stDeployButton                  { display: none !important; }
+            [data-testid="stToolbar"]        { display: none !important; }
+            [data-testid="stDecoration"]     { display: none !important; }
+            /* Style flag radio to look like small icon buttons */
+            div[data-testid="stHorizontalBlock"] .stRadio label {
+                font-size: 26px !important;
+                padding: 2px 6px !important;
+                cursor: pointer !important;
+            }
+            div[data-testid="stHorizontalBlock"] .stRadio {
+                gap: 4px !important;
+            }
         </style>
     """, unsafe_allow_html=True)
 
-    # Language flags — top right
+    # Flag selector — top right corner
     current_lang = st.session_state.get("lang", "es")
-    _, col_flags = st.columns([7, 3])
+    _, col_flags = st.columns([8, 2])
     with col_flags:
         lang_choice = st.radio(
             "",
             options=["es", "en"],
-            format_func=lambda x: "🇪🇸 Español" if x == "es" else "🇺🇸 English",
+            format_func=lambda x: "🇪🇸" if x == "es" else "🇺🇸",
             index=0 if current_lang == "es" else 1,
             horizontal=True,
             label_visibility="collapsed",
