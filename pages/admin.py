@@ -3,10 +3,7 @@ import streamlit as st
 
 from auth import require_auth, set_password
 from i18n import t
-from permissions import (
-    ALL_PAGES, PAGE_FILES, get_all_users_with_permissions,
-    is_admin, save_permission,
-)
+from permissions import ALL_PAGES, get_all_users_with_permissions, is_admin, save_permission
 from projects import get_user_projects
 
 user = require_auth()
@@ -15,83 +12,77 @@ if not is_admin(user["id"]):
     st.error("Acceso restringido / Access restricted")
     st.stop()
 
-st.title("👤 Administración de usuarios")
-st.caption("Gestiona roles y permisos de acceso por usuario.")
+st.title(t("nav.admin"))
 st.divider()
 
 all_projects = get_user_projects(user["id"])
-project_options = {f"{p.name}": p.id for p in all_projects}
+project_options = {p.name: p.id for p in all_projects}
+
+PAGE_LABELS = {
+    "dashboard": "Inicio",
+    "import":    "Importar",
+    "projects":  "Proyectos",
+    "progress":  "Progreso",
+    "expenses":  "Gastos",
+    "rooms":     "Habitaciones",
+    "account":   "Mi cuenta",
+}
 
 users = get_all_users_with_permissions()
 
-PAGE_LABELS = {
-    "dashboard":  "Inicio / Dashboard",
-    "budget":     "Presupuesto / Budget",
-    "expenses":   "Gastos / Expenses",
-    "import":     "Importar / Import",
-    "progress":   "Progreso / Progress",
-    "rooms":      "Habitaciones / Rooms",
-    "account":    "Mi cuenta / Account",
-    "projects":   "Proyectos / Projects",
-}
-
 for u in users:
     is_self = u["id"] == user["id"]
-    with st.expander(f"{'⭐ ' if u['role'] == 'admin' else '👤 '}{u['email']}" + (" (tú)" if is_self else "")):
-        with st.form(key=f"perm_form_{u['id']}"):
+    icon = "⭐" if u["role"] == "admin" else "👤"
+    label = f"{icon} {u['email']}" + (" (tú)" if is_self else "")
+
+    with st.expander(label, expanded=False):
+        if is_self:
+            st.caption("No puedes modificar tus propios permisos.")
+            continue
+
+        with st.form(key=f"perm_{u['id']}"):
             role = st.selectbox(
                 "Rol",
                 ["admin", "viewer"],
                 index=0 if u["role"] == "admin" else 1,
-                key=f"role_{u['id']}",
-                disabled=is_self,
-                help="Admin: acceso total. Viewer: acceso restringido.",
+                help="Admin: acceso total + Configurar perfiles. Viewer: acceso restringido.",
             )
 
-            st.markdown("**Páginas visibles:**")
-            current_pages = u["allowed_pages"] if u["allowed_pages"] is not None else ALL_PAGES
+            st.markdown("**Páginas visibles** (solo aplica para Viewer):")
+            current_pages = u["allowed_pages"] if u["allowed_pages"] is not None else list(PAGE_LABELS.keys())
             selected_pages = []
             cols = st.columns(2)
-            for i, page_key in enumerate(ALL_PAGES):
-                label = PAGE_LABELS.get(page_key, page_key)
-                checked = page_key in current_pages
-                if cols[i % 2].checkbox(label, value=checked, key=f"page_{u['id']}_{page_key}", disabled=is_self):
-                    selected_pages.append(page_key)
+            for i, (key, label_p) in enumerate(PAGE_LABELS.items()):
+                if cols[i % 2].checkbox(label_p, value=key in current_pages, key=f"p_{u['id']}_{key}"):
+                    selected_pages.append(key)
 
-            st.markdown("**Proyectos visibles:**")
-            current_proj_ids = u["allowed_project_ids"]
+            st.markdown("**Proyectos visibles** (solo aplica para Viewer):")
             all_proj = st.checkbox(
                 "Todos los proyectos",
-                value=current_proj_ids is None,
-                key=f"allproj_{u['id']}",
-                disabled=is_self,
+                value=u["allowed_project_ids"] is None,
+                key=f"ap_{u['id']}",
             )
             selected_project_ids = None
             if not all_proj:
                 selected_project_ids = []
                 for pname, pid in project_options.items():
-                    checked_p = current_proj_ids is not None and pid in current_proj_ids
-                    if st.checkbox(pname, value=checked_p, key=f"proj_{u['id']}_{pid}", disabled=is_self):
+                    checked_p = u["allowed_project_ids"] is not None and pid in u["allowed_project_ids"]
+                    if st.checkbox(pname, value=checked_p, key=f"proj_{u['id']}_{pid}"):
                         selected_project_ids.append(pid)
 
-            if not is_self:
-                if st.form_submit_button("💾 Guardar permisos", use_container_width=True):
-                    pages_to_save = None if role == "admin" else (selected_pages or ALL_PAGES)
-                    proj_to_save = None if role == "admin" else selected_project_ids
-                    save_permission(u["id"], role, pages_to_save, proj_to_save)
-                    st.success(f"Permisos actualizados para {u['email']}")
-                    st.rerun()
-            else:
-                st.caption("No puedes modificar tus propios permisos.")
+            if st.form_submit_button("💾 Guardar permisos", use_container_width=True):
+                pages_to_save = None if role == "admin" else (selected_pages or list(PAGE_LABELS.keys()))
+                proj_to_save = None if role == "admin" else selected_project_ids
+                save_permission(u["id"], role, pages_to_save, proj_to_save)
+                st.success(f"Permisos actualizados para {u['email']}")
+                st.rerun()
 
-        # Password reset (outside form)
-        if not is_self:
-            with st.expander("🔑 Restablecer contraseña"):
-                with st.form(f"pwd_form_{u['id']}"):
-                    new_pwd = st.text_input("Nueva contraseña", type="password", key=f"npwd_{u['id']}")
-                    if st.form_submit_button("Guardar contraseña"):
-                        if len(new_pwd) < 6:
-                            st.error("Mínimo 6 caracteres.")
-                        else:
-                            set_password(u["id"], new_pwd)
-                            st.success("Contraseña actualizada.")
+        with st.expander("🔑 Restablecer contraseña"):
+            with st.form(f"pwd_{u['id']}"):
+                new_pwd = st.text_input("Nueva contraseña", type="password")
+                if st.form_submit_button("Guardar contraseña", use_container_width=True):
+                    if len(new_pwd) < 6:
+                        st.error("Mínimo 6 caracteres.")
+                    else:
+                        set_password(u["id"], new_pwd)
+                        st.success("Contraseña actualizada.")
