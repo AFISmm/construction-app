@@ -59,17 +59,13 @@ def is_admin(user_id: int) -> bool:
 
 
 def get_allowed_pages(user_id: int) -> list[str]:
-    pages = ALL_PAGES[:]
     if is_super_admin(user_id):
-        pages.append("admin")
-    elif is_admin(user_id):
-        perm = get_permission(user_id)
-        if perm and perm.allowed_pages:
-            pages = json.loads(perm.allowed_pages)
-    else:
-        perm = get_permission(user_id)
-        if perm and perm.allowed_pages:
-            pages = json.loads(perm.allowed_pages)
+        return ALL_PAGES + ["admin"]
+    perm = get_permission(user_id)
+    if perm is None:
+        return ALL_PAGES  # no record = full access, but not super admin
+    pages = json.loads(perm.allowed_pages) if perm.allowed_pages else ALL_PAGES[:]
+    return pages
     return pages
 
 

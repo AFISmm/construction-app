@@ -6,14 +6,19 @@ import streamlit as st
 from auth import require_auth, set_password
 from db import User, UserPermission, get_session
 from i18n import t
-from permissions import get_all_users_with_permissions, is_super_admin, save_permission
+from permissions import (
+    get_all_users_with_permissions, is_admin, is_super_admin, save_permission,
+)
 from projects import get_user_projects
 
 user = require_auth()
 
-if not is_super_admin(user["id"]):
+# Both super admins and admins with explicit panel access can enter
+if not is_admin(user["id"]):
     st.error("Acceso restringido / Access restricted")
     st.stop()
+
+_is_super = is_super_admin(user["id"])
 
 PAGE_LABELS = {
     "dashboard": "Inicio",
@@ -23,64 +28,82 @@ PAGE_LABELS = {
     "expenses":  "Gastos",
     "rooms":     "Habitaciones",
     "account":   "Mi cuenta",
+    "admin":     "Configurar perfiles",
 }
 
 all_projects = get_user_projects(user["id"])
 project_options = {p.name: p.id for p in all_projects}
 all_users = get_all_users_with_permissions()
 
+# Filter visible users for non-super admins
+if _is_super:
+    visible_users = all_users
+else:
+    try:
+        with get_session() as _s:
+            perm_rec = _s.query(UserPermission).filter_by(user_id=user["id"]).first()
+            managed_ids = _json.loads(perm_rec.managed_user_ids) if perm_rec and perm_rec.managed_user_ids else []
+        visible_users = [u for u in all_users if u["id"] in managed_ids]
+    except Exception:
+        visible_users = []
+
 st.title(t("nav.admin"))
 st.divider()
 
-# ── Crear usuario (collapsible) ───────────────────────────────────────────────
-if st.button("➕ Crear usuario", use_container_width=False):
-    st.session_state["_show_create_user"] = not st.session_state.get("_show_create_user", False)
+# ── Crear usuario (solo super admin) ─────────────────────────────────────────
+if _is_super:
+    if st.button("➕ Crear usuario"):
+        st.session_state["_show_create_user"] = not st.session_state.get("_show_create_user", False)
 
-if st.session_state.get("_show_create_user", False):
-    with st.form("add_user_form"):
-        new_email = st.text_input("Correo electrónico")
-        new_role  = st.selectbox("Rol", ["viewer", "admin"],
-                                 help="Admin: acceso total. Viewer: acceso restringido.")
-        new_pwd   = st.text_input("Contraseña inicial", type="password")
-        new_pwd2  = st.text_input("Confirmar contraseña", type="password")
-        col_save, col_cancel = st.columns(2)
-        save = col_save.form_submit_button("Crear", use_container_width=True)
-        cancel = col_cancel.form_submit_button("Cancelar", use_container_width=True)
-        if cancel:
-            st.session_state["_show_create_user"] = False
-            st.rerun()
-        if save:
-            if not new_email or "@" not in new_email:
-                st.error("Correo inválido.")
-            elif len(new_pwd) < 6:
-                st.error("La contraseña debe tener al menos 6 caracteres.")
-            elif new_pwd != new_pwd2:
-                st.error("Las contraseñas no coinciden.")
-            else:
-                uid_new = None
-                with get_session() as s:
-                    existing = s.query(User).filter_by(email=new_email.strip().lower()).first()
-                    if existing:
-                        st.error("Ese correo ya está registrado.")
-                    else:
-                        u_new = User(email=new_email.strip().lower())
-                        s.add(u_new)
-                        s.flush()
-                        uid_new = u_new.id
-                if uid_new:
-                    set_password(uid_new, new_pwd)
-                    if new_role == "viewer":
-                        save_permission(uid_new, "viewer", list(PAGE_LABELS.keys()), None)
-                    st.session_state["_show_create_user"] = False
-                    st.success(f"Usuario {new_email} creado.")
-                    st.rerun()
+    if st.session_state.get("_show_create_user", False):
+        with st.form("add_user_form"):
+            new_email = st.text_input("Correo electrónico")
+            new_role  = st.selectbox("Rol", ["viewer", "admin"])
+            new_pwd   = st.text_input("Contraseña inicial", type="password")
+            new_pwd2  = st.text_input("Confirmar contraseña", type="password")
+            col_save, col_cancel = st.columns(2)
+            save   = col_save.form_submit_button("Crear", use_container_width=True)
+            cancel = col_cancel.form_submit_button("Cancelar", use_container_width=True)
+            if cancel:
+                st.session_state["_show_create_user"] = False
+                st.rerun()
+            if save:
+                if not new_email or "@" not in new_email:
+                    st.error("Correo inválido.")
+                elif len(new_pwd) < 6:
+                    st.error("Mínimo 6 caracteres.")
+                elif new_pwd != new_pwd2:
+                    st.error("Las contraseñas no coinciden.")
+                else:
+                    uid_new = None
+                    with get_session() as s:
+                        existing = s.query(User).filter_by(email=new_email.strip().lower()).first()
+                        if existing:
+                            st.error("Ese correo ya está registrado.")
+                        else:
+                            u_new = User(email=new_email.strip().lower())
+                            s.add(u_new)
+                            s.flush()
+                            uid_new = u_new.id
+                    if uid_new:
+                        set_password(uid_new, new_pwd)
+                        if new_role == "viewer":
+                            save_permission(uid_new, "viewer",
+                                            [k for k in PAGE_LABELS if k != "admin"], None)
+                        st.session_state["_show_create_user"] = False
+                        st.success(f"Usuario {new_email} creado.")
+                        st.rerun()
 
-st.divider()
+    st.divider()
 
-# ── Usuarios registrados ──────────────────────────────────────────────────────
+# ── Usuarios visibles ─────────────────────────────────────────────────────────
 st.subheader("👥 Usuarios registrados")
 
-for u in all_users:
+if not visible_users:
+    st.info("No tienes usuarios asignados para gestionar.")
+    st.stop()
+
+for u in visible_users:
     is_self = u["id"] == user["id"]
     icon = "⭐" if u["role"] in ("admin", "super_admin") else "👤"
     header = f"{icon} {u['email']}" + (" (tú)" if is_self else "")
@@ -116,16 +139,22 @@ for u in all_users:
                     if st.checkbox(pname, value=checked_p, key=f"proj_{u['id']}_{pid}"):
                         selected_project_ids.append(pid)
 
-            st.markdown("**Usuarios visibles en Configurar perfiles** *(si es admin)*:")
-            other_users = [x for x in all_users if x["id"] != u["id"] and not is_super_admin(x["id"])]
+            # Managed users — only shown if role = admin
+            st.markdown("**Correos visibles en Configurar perfiles** *(si el rol es Admin)*:")
+            st.caption("Define qué usuarios puede ver y gestionar este administrador.")
+            other_users = [x for x in all_users
+                           if x["id"] != u["id"] and not is_super_admin(x["id"])]
             try:
                 with get_session() as _s:
                     perm_rec = _s.query(UserPermission).filter_by(user_id=u["id"]).first()
-                    current_managed = _json.loads(perm_rec.managed_user_ids) if perm_rec and perm_rec.managed_user_ids else None
+                    current_managed = _json.loads(perm_rec.managed_user_ids) \
+                        if perm_rec and perm_rec.managed_user_ids else None
             except Exception:
                 current_managed = None
 
-            all_managed = st.checkbox("Todos los usuarios", value=current_managed is None, key=f"am_{u['id']}")
+            all_managed = st.checkbox("Todos los usuarios",
+                                      value=current_managed is None,
+                                      key=f"am_{u['id']}")
             selected_managed = None
             if not all_managed:
                 selected_managed = []
@@ -135,7 +164,7 @@ for u in all_users:
                         selected_managed.append(ou["id"])
 
             if st.form_submit_button("💾 Guardar permisos", use_container_width=True):
-                pages_to_save = None if role == "admin" else (selected_pages or list(PAGE_LABELS.keys()))
+                pages_to_save = None if role == "admin" else (selected_pages or [k for k in PAGE_LABELS if k != "admin"])
                 save_permission(u["id"], role, pages_to_save, selected_project_ids, selected_managed)
                 st.success("Permisos actualizados.")
                 st.rerun()
@@ -151,24 +180,25 @@ for u in all_users:
                     set_password(u["id"], new_pwd)
                     st.success("Contraseña actualizada.")
 
-        # ── Delete user ───────────────────────────────────────────────────
-        st.markdown("**🗑 Eliminar usuario**")
-        confirm_key = f"_confirm_del_{u['id']}"
-        if not st.session_state.get(confirm_key, False):
-            if st.button("Eliminar usuario", key=f"del_{u['id']}", type="secondary"):
-                st.session_state[confirm_key] = True
-                st.rerun()
-        else:
-            st.warning(f"¿Confirmas eliminar **{u['email']}**? Esta acción no se puede deshacer.")
-            col_yes, col_no = st.columns(2)
-            if col_yes.button("Sí, eliminar", key=f"yes_{u['id']}", type="primary"):
-                with get_session() as s:
-                    u_obj = s.get(User, u["id"])
-                    if u_obj:
-                        s.delete(u_obj)
-                st.session_state.pop(confirm_key, None)
-                st.success(f"Usuario {u['email']} eliminado.")
-                st.rerun()
-            if col_no.button("Cancelar", key=f"no_{u['id']}"):
-                st.session_state.pop(confirm_key, None)
-                st.rerun()
+        # ── Delete user (solo super admin) ────────────────────────────────
+        if _is_super:
+            st.markdown("**🗑 Eliminar usuario**")
+            confirm_key = f"_confirm_del_{u['id']}"
+            if not st.session_state.get(confirm_key, False):
+                if st.button("Eliminar usuario", key=f"del_{u['id']}"):
+                    st.session_state[confirm_key] = True
+                    st.rerun()
+            else:
+                st.warning(f"¿Confirmas eliminar **{u['email']}**? No se puede deshacer.")
+                col_yes, col_no = st.columns(2)
+                if col_yes.button("Sí, eliminar", key=f"yes_{u['id']}", type="primary"):
+                    with get_session() as s:
+                        u_obj = s.get(User, u["id"])
+                        if u_obj:
+                            s.delete(u_obj)
+                    st.session_state.pop(confirm_key, None)
+                    st.success(f"Usuario {u['email']} eliminado.")
+                    st.rerun()
+                if col_no.button("Cancelar", key=f"no_{u['id']}"):
+                    st.session_state.pop(confirm_key, None)
+                    st.rerun()
