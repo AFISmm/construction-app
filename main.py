@@ -202,12 +202,12 @@ def _login_page() -> None:
         logo_b64 = _b64.b64encode(logo_path.read_bytes()).decode()
         st.markdown(f"""
             <div style="display:flex;flex-direction:column;align-items:center;
-                        gap:0.3rem;margin-top:0.2rem;margin-bottom:0.5rem;">
+                        gap:0.3rem;margin-top:0.2rem;margin-bottom:0.5rem;
+                        background:#000000;">
                 <img src="data:image/jpeg;base64,{logo_b64}"
-                     style="width:320px;object-fit:contain;
-                            -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, black 55%, transparent 100%);
-                            mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, black 55%, transparent 100%);
-                            filter:brightness(1.1);">
+                     style="width:380px;object-fit:contain;
+                            mix-blend-mode:screen;
+                            filter:brightness(1.15) contrast(1.1);">
                 <p style="color:#ffffff;font-size:1.1rem;font-weight:600;
                           letter-spacing:0.08em;margin:0;text-align:center;
                           text-shadow: 0 0 8px rgba(224,90,32,0.5);">
