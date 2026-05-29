@@ -105,7 +105,7 @@ def _sidebar(user: dict) -> None:
 
 def _login_page() -> None:
     # Color palette from diGenius.ai logo
-    # Dark navy: #0d1b2e | Orange: #e05a20 | Blue accent: #4fc3f7 | White: #fff
+    # Black background | Orange: #e05a20 | Blue accent: #4fc3f7 | White: #fff
     st.markdown("""
         <style>
             [data-testid="stSidebar"]        { display:none!important; }
@@ -116,25 +116,28 @@ def _login_page() -> None:
             [data-testid="stToolbar"]        { display:none!important; }
             [data-testid="stDecoration"]     { display:none!important; }
 
-            /* Full-page dark background — cover every Streamlit layer */
+            /* Black background on every Streamlit layer */
             html, body, .stApp,
             [data-testid="stAppViewContainer"],
             [data-testid="stMain"],
             [data-testid="stMainBlockContainer"],
-            .main, .block-container, section[data-testid="stMain"] > div {
-                background-color: #0d1b2e !important;
-                background: #0d1b2e !important;
+            .main, .block-container,
+            section[data-testid="stMain"] > div {
+                background-color: #000000 !important;
+                background: #000000 !important;
+            }
+
+            /* Reduce top padding so content sits higher */
+            [data-testid="stMainBlockContainer"] {
+                padding-top: 0.5rem !important;
             }
 
             /* White text */
             .stApp, .stApp * { color: #ffffff; }
 
-            /* Title centered */
-            h1 { text-align: center !important; color: #ffffff !important; font-size: 1.4rem !important; margin-top:0.2rem !important; }
-
-            /* Input fields — dark with white text */
+            /* Input fields */
             input[type="text"], input[type="password"] {
-                background-color: #162030 !important;
+                background-color: #111111 !important;
                 color: #ffffff !important;
                 border: 1px solid #4fc3f7 !important;
                 border-radius: 6px !important;
@@ -181,26 +184,25 @@ def _login_page() -> None:
         logo_b64 = _b64.b64encode(logo_path.read_bytes()).decode()
         st.markdown(f"""
             <div style="display:flex;flex-direction:column;align-items:center;
-                        gap:0.5rem;margin-top:1rem;margin-bottom:1rem;
-                        background:#0d1b2e;">
-                <div style="background:#0d1b2e;width:100%;display:flex;justify-content:center;">
-                    <img src="data:image/jpeg;base64,{logo_b64}"
-                         style="width:260px;object-fit:contain;
-                                mix-blend-mode:screen;
-                                filter:contrast(1.05) brightness(1.05);">
-                </div>
-                <p style="color:#ffffff;font-size:1.15rem;font-weight:600;
-                          letter-spacing:0.07em;margin:0;text-align:center;">
+                        gap:0.3rem;margin-top:0.2rem;margin-bottom:0.5rem;">
+                <img src="data:image/jpeg;base64,{logo_b64}"
+                     style="width:320px;object-fit:contain;
+                            -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, black 55%, transparent 100%);
+                            mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, black 55%, transparent 100%);
+                            filter:brightness(1.1);">
+                <p style="color:#ffffff;font-size:1.1rem;font-weight:600;
+                          letter-spacing:0.08em;margin:0;text-align:center;
+                          text-shadow: 0 0 8px rgba(224,90,32,0.5);">
                     {t("auth.page_title").upper()}
                 </p>
             </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
-            <h1 style="text-align:center;color:#ffffff;font-size:1.3rem;
-                       margin:1rem 0;letter-spacing:0.05em;">
+            <p style="text-align:center;color:#ffffff;font-size:1.1rem;
+                      font-weight:600;letter-spacing:0.08em;margin:0.5rem 0;">
                 {t("auth.page_title").upper()}
-            </h1>
+            </p>
         """, unsafe_allow_html=True)
     _, form_col, _ = st.columns([1, 2, 1])
 
