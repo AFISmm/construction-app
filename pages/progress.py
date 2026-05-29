@@ -27,7 +27,8 @@ if not df_chart.empty:
     st.bar_chart(df_chart)
 
 st.subheader(t("report.variance"))
-df = build_variance_df(project_id)
+currency = summary.currency if summary else ""
+df = build_variance_df(project_id, currency)
 if df.empty:
     st.info(t("common.no_data"))
 else:
