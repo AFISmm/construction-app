@@ -58,6 +58,11 @@ _HIDE_CHROME = """<style>
     [data-testid="stSidebarContent"] { padding-top:0.3rem!important; }
     section[data-testid="stSidebar"] > div { padding-top:0!important; }
     [data-testid="stSidebarContent"] hr { margin:0.3rem 0!important; }
+    /* Project selector: dropdown only, no keyboard typing */
+    [data-testid="stSidebarContent"] [data-baseweb="select"] input {
+        pointer-events:none!important; caret-color:transparent!important; }
+    [data-testid="stSidebarContent"] [data-baseweb="select"] [role="combobox"] {
+        cursor:pointer!important; }
 </style>"""
 
 
