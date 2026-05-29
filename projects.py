@@ -95,8 +95,9 @@ def get_project_summary(project_id: int) -> Optional[ProjectSummary]:
 
 def project_selector_sidebar(user_id: int) -> Optional[int]:
     from i18n import t
+    from permissions import get_visible_projects
 
-    projects = get_user_projects(user_id)
+    projects = get_visible_projects(user_id)
     if not projects:
         st.sidebar.caption(t("project.no_projects"))
         return None

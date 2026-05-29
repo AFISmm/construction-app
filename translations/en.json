@@ -24,6 +24,7 @@
   "nav.account": "My account",
   "nav.projects": "Projects",
   "nav.new_project": "+ New project",
+  "nav.admin": "Administration",
   "nav.logout": "Log out",
   "nav.selector_label": "Active project",
 
