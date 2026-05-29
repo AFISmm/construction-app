@@ -97,21 +97,23 @@ def _flag_links() -> None:
 def _sidebar(user: dict) -> None:
     allowed = get_allowed_pages(user["id"])
     with st.sidebar:
+        # Project selector (read-only display + dropdown to switch)
         project_selector_sidebar(user["id"])
         if st.button(t("nav.new_project"), use_container_width=True):
             st.session_state["_edit_project_id"] = None
             st.switch_page("pages/project_form.py")
-        st.markdown("---")
-        if "projects"   in allowed: st.page_link("pages/project_list.py", label=t("nav.projects"))
+        st.divider()
+        # Navigation — fixed order for all users
         if "dashboard"  in allowed: st.page_link("pages/dashboard.py",    label=t("nav.dashboard"))
-        if "budget"     in allowed: st.page_link("pages/budget.py",       label=t("nav.budget"))
-        if "expenses"   in allowed: st.page_link("pages/expenses.py",     label=t("nav.expenses"))
         if "import"     in allowed: st.page_link("pages/import_page.py",  label=t("nav.import"))
+        if "projects"   in allowed: st.page_link("pages/project_list.py", label=t("nav.projects"))
         if "progress"   in allowed: st.page_link("pages/progress.py",     label=t("nav.progress"))
+        if "expenses"   in allowed: st.page_link("pages/expenses.py",     label=t("nav.expenses"))
         if "rooms"      in allowed: st.page_link("pages/rooms.py",        label=t("nav.rooms"))
         if "account"    in allowed: st.page_link("pages/account.py",      label=t("nav.account"))
-        if "admin"      in allowed: st.page_link("pages/admin.py",        label="⚙ Admin")
-        st.markdown("---")
+        # Admin only
+        if "admin"      in allowed: st.page_link("pages/admin.py",        label=t("nav.admin"))
+        st.divider()
         if st.button(t("nav.logout"), use_container_width=True):
             token = st.query_params.get("s")
             if token:
@@ -285,15 +287,15 @@ def main() -> None:
 
     allowed = get_allowed_pages(user["id"])
     page_map = {
-        "projects":  st.Page("pages/project_list.py", title=t("nav.projects")),
         "dashboard": st.Page("pages/dashboard.py",    title=t("nav.dashboard"), default=True),
-        "budget":    st.Page("pages/budget.py",       title=t("nav.budget")),
-        "expenses":  st.Page("pages/expenses.py",     title=t("nav.expenses")),
         "import":    st.Page("pages/import_page.py",  title=t("nav.import")),
+        "projects":  st.Page("pages/project_list.py", title=t("nav.projects")),
         "progress":  st.Page("pages/progress.py",     title=t("nav.progress")),
+        "expenses":  st.Page("pages/expenses.py",     title=t("nav.expenses")),
         "rooms":     st.Page("pages/rooms.py",        title=t("nav.rooms")),
         "account":   st.Page("pages/account.py",      title=t("nav.account")),
-        "admin":     st.Page("pages/admin.py",        title="Administración"),
+        "budget":    st.Page("pages/budget.py",       title=t("nav.budget")),
+        "admin":     st.Page("pages/admin.py",        title=t("nav.admin")),
     }
     pages = [p for k, p in page_map.items() if k in allowed]
     pages.append(st.Page("pages/project_form.py", title=t("project.create_title")))
