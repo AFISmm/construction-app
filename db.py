@@ -117,7 +117,7 @@ class Category(Base):
     level: Mapped[int] = mapped_column(Integer, nullable=False)
 
     children: Mapped[List["Category"]] = relationship(back_populates="parent")
-    parent: Mapped[Optional[Category]] = relationship(back_populates="children", remote_side="Category.code")
+    parent: Mapped[Optional["Category"]] = relationship(back_populates="children", remote_side="Category.code")
     budget_lines: Mapped[List["BudgetLine"]] = relationship(back_populates="category")
 
 
