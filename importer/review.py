@@ -63,6 +63,14 @@ def _step_upload(project_id: int) -> None:
 
 
 def _step_review(project_id: int) -> None:
+    # Apply any pending AI suggestions BEFORE widgets render
+    for key in list(st.session_state.keys()):
+        if key.startswith("_ai_pending_"):
+            row_id = key[len("_ai_pending_"):]
+            label = st.session_state.pop(key)
+            if label:
+                st.session_state[f"override_{row_id}"] = label
+
     job_id = st.session_state.get("_import_job_id")
     if not job_id:
         st.session_state["_import_step"] = "upload"
@@ -137,7 +145,7 @@ def _step_review(project_id: int) -> None:
                     if code:
                         label = next((k for k, v in cat_map.items() if v == code), "")
                         if label:
-                            st.session_state[f"override_{row['id']}"] = label
+                            st.session_state[f"_ai_pending_{row['id']}"] = label
                         else:
                             st.warning(f"Código IA '{code}' no encontrado en categorías.")
                     else:
