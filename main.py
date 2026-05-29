@@ -54,9 +54,14 @@ _HIDE_CHROME = """
         [data-testid="stDecoration"]     { display:none!important; }
         [data-testid="stStatusWidget"]   { display:none!important; }
         footer                           { display:none!important; }
-        /* Compact sidebar top */
-        [data-testid="stSidebarContent"] { padding-top: 0.5rem !important; }
-        section[data-testid="stSidebar"] > div:first-child { padding-top: 0 !important; }
+        /* Compact sidebar — push everything to top */
+        [data-testid="stSidebarContent"] { padding-top: 0.3rem !important; padding-bottom: 0 !important; }
+        section[data-testid="stSidebar"] > div { padding-top: 0 !important; }
+        [data-testid="stSidebarUserContent"] { padding-top: 0 !important; margin-top: 0 !important; }
+        /* Reduce spacing between sidebar elements */
+        [data-testid="stSidebarContent"] .stSelectbox { margin-bottom: 0.2rem !important; }
+        [data-testid="stSidebarContent"] .stButton { margin-bottom: 0.1rem !important; }
+        [data-testid="stSidebarContent"] hr { margin: 0.3rem 0 !important; }
         /* ES/EN buttons — small, consistent everywhere */
         button[data-testid="baseButton-secondary"][kind="secondary"]:has(> p:contains("ES")),
         button[data-testid="baseButton-primary"][kind="primary"]:has(> p:contains("ES")),
@@ -75,9 +80,27 @@ _HIDE_CHROME = """
 
 
 def _lang_buttons() -> None:
-    """Render compact ES / EN buttons at top-right of content area."""
-    st.markdown(_HIDE_CHROME, unsafe_allow_html=True)
+    """Render ES / EN buttons fixed top-right via CSS positioning."""
     current = st.session_state.get("lang", "es")
+    # Inject CSS to fix the lang button row to top-right corner
+    st.markdown(_HIDE_CHROME + """
+        <style>
+        /* Fix the lang button row (first stHorizontalBlock) to top-right */
+        [data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"]
+            > [data-testid="stHorizontalBlock"]:first-of-type {
+            position: fixed !important;
+            top: 6px !important;
+            right: 12px !important;
+            width: auto !important;
+            z-index: 9998 !important;
+            background: transparent !important;
+        }
+        [data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"]
+            > [data-testid="stHorizontalBlock"]:first-of-type [data-testid="column"]:first-child {
+            display: none !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
     _, c1, c2 = st.columns([9, 0.5, 0.5])
     if c1.button("ES", key="_lang_es",
                  type="primary" if current == "es" else "secondary",
