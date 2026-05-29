@@ -104,16 +104,59 @@ def _sidebar(user: dict) -> None:
 
 
 def _login_page() -> None:
-    # Hide sidebar and Streamlit chrome
+    # Color palette from diGenius.ai logo
+    # Dark navy: #0d1b2e | Orange: #e05a20 | Blue accent: #4fc3f7 | White: #fff
     st.markdown("""
         <style>
-            [data-testid="stSidebar"]       { display:none!important; }
-            [data-testid="collapsedControl"]{ display:none!important; }
-            header[data-testid="stHeader"]  { display:none!important; }
-            #MainMenu                       { display:none!important; }
-            .stDeployButton                 { display:none!important; }
-            [data-testid="stToolbar"]       { display:none!important; }
-            [data-testid="stDecoration"]    { display:none!important; }
+            [data-testid="stSidebar"]        { display:none!important; }
+            [data-testid="collapsedControl"] { display:none!important; }
+            header[data-testid="stHeader"]   { display:none!important; }
+            #MainMenu                        { display:none!important; }
+            .stDeployButton                  { display:none!important; }
+            [data-testid="stToolbar"]        { display:none!important; }
+            [data-testid="stDecoration"]     { display:none!important; }
+
+            /* Full-page dark background */
+            .stApp { background-color: #0d1b2e !important; }
+            [data-testid="stMainBlockContainer"] { background-color: #0d1b2e !important; }
+            [data-testid="stMain"] { background-color: #0d1b2e !important; }
+
+            /* White text */
+            .stApp, .stApp * { color: #ffffff; }
+
+            /* Title centered */
+            h1 { text-align: center !important; color: #ffffff !important; font-size: 1.4rem !important; margin-top:0.2rem !important; }
+
+            /* Input fields — dark with white text */
+            input[type="text"], input[type="password"] {
+                background-color: #162030 !important;
+                color: #ffffff !important;
+                border: 1px solid #4fc3f7 !important;
+                border-radius: 6px !important;
+            }
+            label { color: #c8dce8 !important; }
+
+            /* Primary button — orange */
+            .stButton > button[kind="primary"],
+            .stFormSubmitButton > button {
+                background-color: #e05a20 !important;
+                color: #ffffff !important;
+                border: none !important;
+                border-radius: 6px !important;
+                font-weight: 600 !important;
+            }
+            .stButton > button[kind="primary"]:hover,
+            .stFormSubmitButton > button:hover {
+                background-color: #c84d1a !important;
+            }
+
+            /* Tabs */
+            .stTabs [data-baseweb="tab-list"] { background-color: #162030 !important; border-radius:6px; }
+            .stTabs [data-baseweb="tab"] { color: #8ec5d6 !important; }
+            .stTabs [aria-selected="true"] { color: #4fc3f7 !important; border-bottom: 2px solid #4fc3f7 !important; }
+
+            /* Lang buttons */
+            .stButton > button { border-radius:4px !important; font-size:0.8rem !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -124,13 +167,27 @@ def _login_page() -> None:
         st.rerun()
 
     _lang_buttons()
-    # Logo
+
+    # Logo — small, centered, no white border
     from pathlib import Path as _Path
+    import base64 as _b64
     logo_path = _Path(__file__).parent / "Logo.jpeg"
     if logo_path.exists():
-        _, logo_col, _ = st.columns([1, 2, 1])
-        logo_col.image(str(logo_path), use_container_width=True)
-    st.title(t("auth.page_title"))
+        logo_b64 = _b64.b64encode(logo_path.read_bytes()).decode()
+        st.markdown(f"""
+            <div style="display:flex;justify-content:center;margin-top:0.5rem;margin-bottom:0.2rem;">
+                <img src="data:image/jpeg;base64,{logo_b64}"
+                     style="height:80px;border-radius:8px;object-fit:contain;background:transparent;">
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Centered title
+    st.markdown(f"""
+        <h1 style="text-align:center;color:#ffffff;font-size:1.3rem;
+                   margin-top:0.3rem;margin-bottom:1rem;letter-spacing:0.05em;">
+            {t("auth.page_title").upper()}
+        </h1>
+    """, unsafe_allow_html=True)
     _, form_col, _ = st.columns([1, 2, 1])
 
     step = st.session_state.get("_auth_step", "login")
