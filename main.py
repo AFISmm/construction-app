@@ -200,19 +200,23 @@ def _login_page() -> None:
                     else:
                         from db import User, get_session as _gs
                         uid_new = None
+                        email_taken = False
                         with _gs() as _s:
                             existing = _s.query(User).filter_by(email=reg_email.strip().lower()).first()
                             if existing:
-                                st.error(t("auth.email_already_registered"))
+                                email_taken = True
                             else:
                                 u = User(email=reg_email.strip().lower())
                                 _s.add(u)
                                 _s.flush()
                                 uid_new = u.id
-                                set_password(uid_new, reg_pwd1)
-                                st.session_state["user_id"] = uid_new
-                                st.session_state["user_email"] = reg_email.strip().lower()
-                        if uid_new:
+                        # set_password AFTER session commits the user
+                        if email_taken:
+                            st.error(t("auth.email_already_registered"))
+                        elif uid_new:
+                            set_password(uid_new, reg_pwd1)
+                            st.session_state["user_id"] = uid_new
+                            st.session_state["user_email"] = reg_email.strip().lower()
                             token = create_persistent_session(uid_new)
                             st.query_params["s"] = token
                             st.rerun()
