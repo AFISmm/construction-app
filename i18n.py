@@ -35,6 +35,13 @@ def t(key: str, **kwargs) -> str:
     return value
 
 
+def set_language(lang: str) -> None:
+    """Set active language and clear translation cache."""
+    if lang in ALLOWED_LANGS:
+        st.session_state["lang"] = lang
+        _cache.clear()
+
+
 def language_toggle() -> None:
     current = st.session_state.get("lang", "es")
     labels = ["🇪🇸 Español", "🇺🇸 English"]

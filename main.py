@@ -11,7 +11,7 @@ from auth import (
     verify_otp,
 )
 from db import init_db, seed_categories
-from i18n import language_toggle, t
+from i18n import language_toggle, set_language, t
 from permissions import PAGE_FILES, get_allowed_pages, get_visible_projects, is_admin
 from projects import project_selector_sidebar
 
@@ -139,8 +139,11 @@ def _login_page() -> None:
     # Handle ?lang= param set by flag links
     lang_param = st.query_params.get("lang")
     if lang_param in ("es", "en"):
-        st.session_state["lang"] = lang_param
-        st.query_params.pop("lang", None)
+        set_language(lang_param)
+        try:
+            del st.query_params["lang"]
+        except Exception:
+            pass
         st.rerun()
 
     current_lang = st.session_state.get("lang", "es")
@@ -271,13 +274,14 @@ def _login_page() -> None:
 
 def main() -> None:
     _bootstrap()
-    # Handle language param (set by flag links on both login and app pages)
+    # Handle language param set by flag links
     lang_param = st.query_params.get("lang")
     if lang_param in ("es", "en"):
-        from i18n import _cache
-        st.session_state["lang"] = lang_param
-        _cache.clear()
-        st.query_params.pop("lang", None)
+        set_language(lang_param)
+        try:
+            del st.query_params["lang"]
+        except Exception:
+            pass
         st.rerun()
     _restore_session()
     user = get_current_user()
