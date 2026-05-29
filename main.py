@@ -73,6 +73,8 @@ def _sidebar(user: dict) -> None:
 
 
 def _login_page() -> None:
+    with st.sidebar:
+        language_toggle()
     st.title(t("auth.page_title"))
     step = st.session_state.get("_auth_step", "email")
 
