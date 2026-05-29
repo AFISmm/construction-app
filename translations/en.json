@@ -118,7 +118,7 @@
   "import.status_complete": "Complete",
   "import.status_failed": "Failed",
   "import.duplicate_warning": "This row would create a duplicate line.",
-  "import.ai_suggest_button": "AI category suggestions",
+  "import.ai_suggest_button": "Assign Category",
   "import.ai_suggest_loading": "Analyzing with AI...",
 
   "error.required": "This field is required.",

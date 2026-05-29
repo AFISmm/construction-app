@@ -109,20 +109,32 @@ def _step_review(project_id: int) -> None:
     flagged_rows = [r for r in row_data if r["confidence"] < LOW_CONFIDENCE_THRESHOLD]
     if flagged_rows:
         st.warning(t("import.low_confidence_warning"))
+        if has_api_key:
+            if st.button(t("import.ai_suggest_button")):
+                with st.spinner(t("import.ai_suggest_loading")):
+                    from importer.ai_suggest import suggest_categories
+                    descs = [r["desc"] for r in flagged_rows]
+                    suggestions = suggest_categories(descs, categories)
+                    for row in flagged_rows:
+                        code = suggestions.get(row["desc"])
+                        if code:
+                            label = next((k for k, v in cat_map.items() if v == code), "")
+                            if label:
+                                st.session_state[f"_ai_pending_{row['id']}"] = label
+                st.rerun()
 
     # Column headers
-    h_desc, h_cat, h_ai = st.columns([4, 3.5, 0.5])
+    h_desc, h_cat = st.columns([4, 4])
     h_desc.markdown(f"**{t('import.col_original')}**")
     h_cat.markdown(f"**{t('import.col_category')}**")
-    if has_api_key:
-        h_ai.markdown("**IA**")
     st.divider()
 
     for row in row_data:
         conf = row["confidence"]
         flag = conf < LOW_CONFIDENCE_THRESHOLD
-        marker = ":orange[⚠]" if flag else ":green[✓]"
-        c_desc, c_cat, c_ai = st.columns([4, 3.5, 0.5])
+        assigned = bool(st.session_state.get(f"override_{row['id']}", ""))
+        marker = ":green[✓]" if (not flag or assigned) else ":orange[⚠]"
+        c_desc, c_cat = st.columns([4, 4])
         c_desc.write(f"{marker} {row['desc']}")
 
         if flag:
@@ -137,20 +149,6 @@ def _step_review(project_id: int) -> None:
                 label_visibility="collapsed",
             )
             pending_overrides[row["id"]] = cat_map.get(selected) if selected else None
-
-            if has_api_key and c_ai.button("🤖", key=f"ai_{row['id']}", help=t("import.ai_suggest_button")):
-                with st.spinner(t("import.ai_suggest_loading")):
-                    from importer.ai_suggest import suggest_category
-                    code = suggest_category(row["desc"], categories)
-                    if code:
-                        label = next((k for k, v in cat_map.items() if v == code), "")
-                        if label:
-                            st.session_state[f"_ai_pending_{row['id']}"] = label
-                        else:
-                            st.warning(f"Código IA '{code}' no encontrado en categorías.")
-                    else:
-                        st.warning("La IA no pudo asignar una categoría.")
-                st.rerun()
         else:
             matched_label = next((k for k, v in cat_map.items() if v == row["code"]), "—")
             c_cat.write(matched_label)

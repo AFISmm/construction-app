@@ -118,7 +118,7 @@
   "import.status_complete": "Completado",
   "import.status_failed": "Fallido",
   "import.duplicate_warning": "Esta fila crearia una linea duplicada.",
-  "import.ai_suggest_button": "Sugerir categorias con IA",
+  "import.ai_suggest_button": "Asignar Categoria",
   "import.ai_suggest_loading": "Analizando con IA...",
 
   "error.required": "Este campo es obligatorio.",
