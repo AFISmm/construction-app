@@ -73,8 +73,17 @@ def _sidebar(user: dict) -> None:
 
 
 def _login_page() -> None:
-    with st.sidebar:
-        language_toggle()
+    _, col_es, col_en = st.columns([6, 1, 1])
+    current_lang = st.session_state.get("lang", "es")
+    if col_es.button("🇪🇸", use_container_width=True,
+                     type="primary" if current_lang == "es" else "secondary"):
+        st.session_state["lang"] = "es"
+        st.rerun()
+    if col_en.button("🇺🇸", use_container_width=True,
+                     type="primary" if current_lang == "en" else "secondary"):
+        st.session_state["lang"] = "en"
+        st.rerun()
+
     st.title(t("auth.page_title"))
     step = st.session_state.get("_auth_step", "email")
 
