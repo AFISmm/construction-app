@@ -94,7 +94,6 @@ def _sidebar(user: dict) -> None:
         if "projects"   in allowed: st.page_link("pages/project_list.py", label=t("nav.projects"))
         if "progress"   in allowed: st.page_link("pages/progress.py",     label=t("nav.progress"))
         if "expenses"   in allowed: st.page_link("pages/expenses.py",     label=t("nav.expenses"))
-        if "rooms"      in allowed: st.page_link("pages/rooms.py",        label=t("nav.rooms"))
         if "account"    in allowed: st.page_link("pages/account.py",      label=t("nav.account"))
         # Admin only
         if "admin" in allowed:
@@ -111,6 +110,11 @@ def _sidebar(user: dict) -> None:
 
 
 def _login_page() -> None:
+    # If just logged in, show blank while rerunning — prevents flash
+    if st.session_state.get("_just_logged_in"):
+        st.session_state.pop("_just_logged_in", None)
+        st.rerun()
+
     # Color palette from diGenius.ai logo
     # Black background | Orange: #e05a20 | Blue accent: #4fc3f7 | White: #fff
     st.markdown("""
@@ -273,6 +277,7 @@ def _login_page() -> None:
                         if result == "ok":
                             token = create_persistent_session(st.session_state["user_id"])
                             st.query_params["s"] = token
+                            st.session_state["_just_logged_in"] = True
                             st.rerun()
                         elif result == "no_password":
                             st.session_state["_pending_email"] = email.strip().lower()
