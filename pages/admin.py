@@ -4,16 +4,18 @@ import streamlit as st
 from auth import require_auth, set_password
 from db import User, get_session
 from i18n import t
-from permissions import get_all_users_with_permissions, is_admin, save_permission
+from permissions import (
+    get_all_users_with_permissions, get_managed_users,
+    is_super_admin, save_permission,
+)
 from projects import get_user_projects
 
 user = require_auth()
 
-if not is_admin(user["id"]):
+if not is_super_admin(user["id"]):
     st.error("Acceso restringido / Access restricted")
     st.stop()
 
-# ── Constants ─────────────────────────────────────────────────────────────────
 PAGE_LABELS = {
     "dashboard": "Inicio",
     "import":    "Importar",
@@ -26,8 +28,8 @@ PAGE_LABELS = {
 
 all_projects = get_user_projects(user["id"])
 project_options = {p.name: p.id for p in all_projects}
+all_users = get_all_users_with_permissions()
 
-# ── Page ──────────────────────────────────────────────────────────────────────
 st.title(t("nav.admin"))
 st.divider()
 
@@ -36,7 +38,7 @@ st.subheader("➕ Agregar usuario")
 with st.form("add_user_form"):
     new_email = st.text_input("Correo electrónico")
     new_role  = st.selectbox("Rol", ["viewer", "admin"],
-                             help="Admin: acceso total. Viewer: acceso restringido.")
+                             help="Admin: acceso total a la app. Viewer: acceso restringido.")
     new_pwd   = st.text_input("Contraseña inicial", type="password")
     new_pwd2  = st.text_input("Confirmar contraseña", type="password")
     if st.form_submit_button("Crear usuario", use_container_width=True):
@@ -66,14 +68,12 @@ with st.form("add_user_form"):
 
 st.divider()
 
-# ── Existing users ────────────────────────────────────────────────────────────
+# ── Manage existing users ─────────────────────────────────────────────────────
 st.subheader("👥 Usuarios registrados")
 
-users = get_all_users_with_permissions()
-
-for u in users:
+for u in all_users:
     is_self = u["id"] == user["id"]
-    icon = "⭐" if u["role"] == "admin" else "👤"
+    icon = "⭐" if u["role"] in ("admin", "super_admin") else "👤"
     header = f"{icon} {u['email']}" + (" (tú)" if is_self else "")
 
     with st.expander(header, expanded=False):
@@ -85,9 +85,10 @@ for u in users:
             role = st.selectbox(
                 "Rol",
                 ["admin", "viewer"],
-                index=0 if u["role"] == "admin" else 1,
-                help="Admin: acceso total. Viewer: acceso restringido.",
+                index=0 if u["role"] in ("admin", "super_admin") else 1,
+                help="Admin: acceso total a la app. Viewer: acceso restringido.",
             )
+
             st.markdown("**Páginas visibles** *(aplica para Viewer)*:")
             current_pages = u["allowed_pages"] if u["allowed_pages"] is not None else list(PAGE_LABELS.keys())
             selected_pages = []
@@ -108,9 +109,32 @@ for u in users:
                     if st.checkbox(pname, value=checked_p, key=f"proj_{u['id']}_{pid}"):
                         selected_project_ids.append(pid)
 
+            st.markdown("**Usuarios visibles en Configurar perfiles** *(si este usuario es admin)*:")
+            st.caption("Selecciona qué correos puede ver y gestionar este administrador.")
+            other_users = [x for x in all_users if x["id"] != u["id"] and not is_super_admin(x["id"])]
+            try:
+                import json as _json
+                from db import UserPermission, get_session as _gs
+                with _gs() as _s:
+                    perm_rec = _s.query(UserPermission).filter_by(user_id=u["id"]).first()
+                    current_managed = _json.loads(perm_rec.managed_user_ids) if perm_rec and perm_rec.managed_user_ids else None
+            except Exception:
+                current_managed = None
+
+            all_managed = st.checkbox("Todos los usuarios",
+                                      value=current_managed is None,
+                                      key=f"am_{u['id']}")
+            selected_managed = None
+            if not all_managed:
+                selected_managed = []
+                for ou in other_users:
+                    checked_m = current_managed is not None and ou["id"] in current_managed
+                    if st.checkbox(ou["email"], value=checked_m, key=f"mu_{u['id']}_{ou['id']}"):
+                        selected_managed.append(ou["id"])
+
             if st.form_submit_button("💾 Guardar permisos", use_container_width=True):
                 pages_to_save = None if role == "admin" else (selected_pages or list(PAGE_LABELS.keys()))
-                save_permission(u["id"], role, pages_to_save, selected_project_ids)
+                save_permission(u["id"], role, pages_to_save, selected_project_ids, selected_managed)
                 st.success(f"Permisos actualizados para {u['email']}")
                 st.rerun()
 

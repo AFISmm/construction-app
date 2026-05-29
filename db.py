@@ -236,8 +236,9 @@ class UserPermission(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     role: Mapped[str] = mapped_column(String(20), default="viewer", nullable=False)  # admin | viewer
-    allowed_pages: Mapped[Optional[str]] = mapped_column(Text)   # JSON list or NULL = all pages
+    allowed_pages: Mapped[Optional[str]] = mapped_column(Text)        # JSON list or NULL = all pages
     allowed_project_ids: Mapped[Optional[str]] = mapped_column(Text)  # JSON list or NULL = all projects
+    managed_user_ids: Mapped[Optional[str]] = mapped_column(Text)     # JSON list of user IDs this admin can manage
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
