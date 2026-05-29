@@ -77,89 +77,129 @@ def _login_page() -> None:
     # Hide sidebar and Streamlit chrome
     st.markdown("""
         <style>
-            [data-testid="stSidebar"]        { display: none !important; }
-            [data-testid="collapsedControl"]  { display: none !important; }
-            header[data-testid="stHeader"]    { display: none !important; }
-            #MainMenu                         { display: none !important; }
-            .stDeployButton                   { display: none !important; }
-            [data-testid="stToolbar"]         { display: none !important; }
-            [data-testid="stDecoration"]      { display: none !important; }
+            [data-testid="stSidebar"]       { display:none!important; }
+            [data-testid="collapsedControl"]{ display:none!important; }
+            header[data-testid="stHeader"]  { display:none!important; }
+            #MainMenu                       { display:none!important; }
+            .stDeployButton                 { display:none!important; }
+            [data-testid="stToolbar"]       { display:none!important; }
+            [data-testid="stDecoration"]    { display:none!important; }
         </style>
     """, unsafe_allow_html=True)
 
-    # Flag selector — top right
-    current_lang = st.session_state.get("lang", "es")
-    _, col_flags = st.columns([8, 2])
-    with col_flags:
-        lang_choice = st.radio(
-            "",
-            options=["es", "en"],
-            format_func=lambda x: "🇪🇸 ES" if x == "es" else "🇺🇸 EN",
-            index=0 if current_lang == "es" else 1,
-            horizontal=True,
-            label_visibility="collapsed",
-            key="_login_lang",
-        )
-    if lang_choice != current_lang:
-        st.session_state["lang"] = lang_choice
+    # Handle ?lang= param set by flag links
+    lang_param = st.query_params.get("lang")
+    if lang_param in ("es", "en"):
+        st.session_state["lang"] = lang_param
+        st.query_params.pop("lang", None)
         st.rerun()
 
+    current_lang = st.session_state.get("lang", "es")
+
+    # Flag links — fixed top-right using HTML (renders emoji reliably)
+    st.markdown(f"""
+        <div style="position:fixed;top:18px;right:20px;z-index:9999;display:flex;gap:10px;align-items:center;">
+            <a href="?lang=es" style="font-size:28px;text-decoration:none;opacity:{'1' if current_lang=='es' else '0.45'};">🇪🇸</a>
+            <a href="?lang=en" style="font-size:28px;text-decoration:none;opacity:{'1' if current_lang=='en' else '0.45'};">🇺🇸</a>
+        </div>
+    """, unsafe_allow_html=True)
+
     st.title(t("auth.page_title"))
+    _, form_col, _ = st.columns([1, 2, 1])
 
     step = st.session_state.get("_auth_step", "login")
 
-    if step == "set_password":
-        email = st.session_state.get("_pending_email", "")
-        st.info(f"**{email}** — {t('auth.set_password_title')}")
-        with st.form("set_pwd_form"):
-            pwd1 = st.text_input(t("auth.set_password_label"), type="password")
-            pwd2 = st.text_input(t("auth.confirm_password_label"), type="password")
-            if st.form_submit_button(t("auth.set_password_button")):
-                if len(pwd1) < 6:
+    with form_col:
+        if step == "register":
+            st.subheader(t("auth.register_title"))
+            with st.form("register_form"):
+                email = st.text_input(t("auth.email_label"), placeholder=t("auth.email_placeholder"))
+                pwd1  = st.text_input(t("auth.password_label"), type="password")
+                pwd2  = st.text_input(t("auth.confirm_password_label"), type="password")
+                submitted = st.form_submit_button(t("auth.register_button"), use_container_width=True)
+            if submitted:
+                if not email or "@" not in email:
+                    st.error(t("error.invalid_email"))
+                elif len(pwd1) < 6:
                     st.error(t("auth.password_too_short"))
                 elif pwd1 != pwd2:
                     st.error(t("auth.password_mismatch"))
                 else:
                     from db import User, get_session as _gs
                     with _gs() as _s:
-                        u = _s.query(User).filter_by(email=email).first()
-                        if not u:
-                            u = User(email=email)
+                        existing = _s.query(User).filter_by(email=email.strip().lower()).first()
+                        if existing:
+                            st.error(t("auth.email_already_registered"))
+                        else:
+                            u = User(email=email.strip().lower())
                             _s.add(u)
                             _s.flush()
-                        uid = u.id
-                    set_password(uid, pwd1)
-                    st.success(t("auth.password_saved"))
-                    st.session_state.pop("_auth_step", None)
-                    st.session_state.pop("_pending_email", None)
-                    st.rerun()
-        return
+                            uid = u.id
+                            set_password(uid, pwd1)
+                            st.session_state["user_id"] = uid
+                            st.session_state["user_email"] = email.strip().lower()
+                    if "user_id" in st.session_state:
+                        token = create_persistent_session(st.session_state["user_id"])
+                        st.query_params["s"] = token
+                        st.session_state.pop("_auth_step", None)
+                        st.rerun()
+            if st.button(t("auth.back_to_login"), use_container_width=True):
+                st.session_state.pop("_auth_step", None)
+                st.rerun()
 
-    # Default: email + password login
-    _, form_col, _ = st.columns([1, 2, 1])
-    with form_col:
-        with st.form("login_form"):
-            email = st.text_input(t("auth.email_label"), placeholder=t("auth.email_placeholder"))
-            password = st.text_input(t("auth.password_label"), type="password",
-                                     placeholder=t("auth.password_placeholder"))
-            submitted = st.form_submit_button(t("auth.login_button"), use_container_width=True)
-        if submitted:
-            if not email or "@" not in email:
-                st.error(t("error.invalid_email"))
-            elif not password:
-                st.error(t("auth.password_too_short"))
-            else:
-                result = login_with_password(email, password)
-                if result == "ok":
-                    token = create_persistent_session(st.session_state["user_id"])
-                    st.query_params["s"] = token
-                    st.rerun()
-                elif result == "no_password":
-                    st.session_state["_pending_email"] = email.strip().lower()
-                    st.session_state["_auth_step"] = "set_password"
-                    st.rerun()
+        elif step == "set_password":
+            email = st.session_state.get("_pending_email", "")
+            st.info(f"**{email}** — {t('auth.set_password_title')}")
+            with st.form("set_pwd_form"):
+                pwd1 = st.text_input(t("auth.set_password_label"), type="password")
+                pwd2 = st.text_input(t("auth.confirm_password_label"), type="password")
+                if st.form_submit_button(t("auth.set_password_button"), use_container_width=True):
+                    if len(pwd1) < 6:
+                        st.error(t("auth.password_too_short"))
+                    elif pwd1 != pwd2:
+                        st.error(t("auth.password_mismatch"))
+                    else:
+                        from db import User, get_session as _gs
+                        with _gs() as _s:
+                            u = _s.query(User).filter_by(email=email).first()
+                            if not u:
+                                u = User(email=email)
+                                _s.add(u)
+                                _s.flush()
+                            uid = u.id
+                        set_password(uid, pwd1)
+                        st.success(t("auth.password_saved"))
+                        st.session_state.pop("_auth_step", None)
+                        st.session_state.pop("_pending_email", None)
+                        st.rerun()
+
+        else:
+            # Login form
+            with st.form("login_form"):
+                email    = st.text_input(t("auth.email_label"), placeholder=t("auth.email_placeholder"))
+                password = st.text_input(t("auth.password_label"), type="password",
+                                         placeholder=t("auth.password_placeholder"))
+                submitted = st.form_submit_button(t("auth.login_button"), use_container_width=True)
+            if submitted:
+                if not email or "@" not in email:
+                    st.error(t("error.invalid_email"))
+                elif not password:
+                    st.error(t("auth.password_too_short"))
                 else:
-                    st.error(t("auth.invalid_credentials"))
+                    result = login_with_password(email, password)
+                    if result == "ok":
+                        token = create_persistent_session(st.session_state["user_id"])
+                        st.query_params["s"] = token
+                        st.rerun()
+                    elif result == "no_password":
+                        st.session_state["_pending_email"] = email.strip().lower()
+                        st.session_state["_auth_step"] = "set_password"
+                        st.rerun()
+                    else:
+                        st.error(t("auth.invalid_credentials"))
+            if st.button(t("auth.register_link"), use_container_width=True):
+                st.session_state["_auth_step"] = "register"
+                st.rerun()
 
 
 def main() -> None:

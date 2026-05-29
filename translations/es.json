@@ -24,6 +24,11 @@
   "auth.password_mismatch": "Las contrasenas no coinciden.",
   "auth.password_too_short": "La contrasena debe tener al menos 6 caracteres.",
   "auth.password_saved": "Contrasena guardada. Ya puedes ingresar.",
+  "auth.register_title": "Crear cuenta",
+  "auth.register_button": "Registrarse",
+  "auth.register_link": "Crear cuenta nueva",
+  "auth.back_to_login": "Volver al inicio de sesion",
+  "auth.email_already_registered": "Este correo ya esta registrado. Inicia sesion.",
   "auth.welcome": "Bienvenido",
 
   "nav.language_toggle": "Idioma",

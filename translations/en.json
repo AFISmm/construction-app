@@ -24,6 +24,11 @@
   "auth.password_mismatch": "Passwords do not match.",
   "auth.password_too_short": "Password must be at least 6 characters.",
   "auth.password_saved": "Password saved. You can now sign in.",
+  "auth.register_title": "Create account",
+  "auth.register_button": "Sign up",
+  "auth.register_link": "Create new account",
+  "auth.back_to_login": "Back to sign in",
+  "auth.email_already_registered": "This email is already registered. Please sign in.",
   "auth.welcome": "Welcome",
 
   "nav.language_toggle": "Language",
