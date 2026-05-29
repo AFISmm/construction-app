@@ -138,12 +138,12 @@ for u in all_users:
                 st.success(f"Permisos actualizados para {u['email']}")
                 st.rerun()
 
-        with st.expander("🔑 Restablecer contraseña"):
-            with st.form(f"pwd_{u['id']}"):
-                new_pwd = st.text_input("Nueva contraseña", type="password")
-                if st.form_submit_button("Guardar contraseña", use_container_width=True):
-                    if len(new_pwd) < 6:
-                        st.error("Mínimo 6 caracteres.")
-                    else:
-                        set_password(u["id"], new_pwd)
-                        st.success("Contraseña actualizada.")
+        st.markdown("**🔑 Restablecer contraseña**")
+        with st.form(f"pwd_{u['id']}"):
+            new_pwd = st.text_input("Nueva contraseña", type="password", key=f"pw_{u['id']}")
+            if st.form_submit_button("Guardar contraseña", use_container_width=True):
+                if len(new_pwd) < 6:
+                    st.error("Mínimo 6 caracteres.")
+                else:
+                    set_password(u["id"], new_pwd)
+                    st.success("Contraseña actualizada.")
