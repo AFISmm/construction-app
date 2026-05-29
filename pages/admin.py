@@ -38,13 +38,19 @@ all_users = get_all_users_with_permissions()
 
 # Filter visible users for non-super admins
 if _is_super:
-    visible_users = all_users
+    # Sort: admins first, then viewers, then others
+    role_order = {"admin": 0, "super_admin": 0, "viewer": 1, "pending": 2, "rejected": 3}
+    visible_users = sorted(all_users, key=lambda u: role_order.get(u["role"], 9))
 else:
     try:
         with get_session() as _s:
             perm_rec = _s.query(UserPermission).filter_by(user_id=user["id"]).first()
             managed_ids = _json.loads(perm_rec.managed_user_ids) if perm_rec and perm_rec.managed_user_ids else []
-        visible_users = [u for u in all_users if u["id"] in managed_ids]
+        role_order = {"admin": 0, "super_admin": 0, "viewer": 1, "pending": 2, "rejected": 3}
+        visible_users = sorted(
+            [u for u in all_users if u["id"] in managed_ids],
+            key=lambda u: role_order.get(u["role"], 9)
+        )
     except Exception:
         visible_users = []
 
@@ -138,6 +144,11 @@ for u in visible_users:
     with st.expander(header, expanded=False):
         if is_self:
             st.caption("No puedes modificar tus propios permisos.")
+            continue
+
+        # Solo el super admin puede editar — los demás solo ven
+        if not _is_super:
+            st.caption(f"Rol: **{u['role']}** | Solo {t('nav.admin').lower()} puede editar perfiles.")
             continue
 
         # ── Permissions form ──────────────────────────────────────────────
