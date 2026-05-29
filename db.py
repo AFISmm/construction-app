@@ -247,8 +247,24 @@ class UserPermission(Base):
 # Database setup
 # ---------------------------------------------------------------------------
 
+def _run_migrations() -> None:
+    """Add new columns to existing tables that SQLAlchemy create_all won't touch."""
+    from sqlalchemy import text
+    migrations = [
+        "ALTER TABLE user_permissions ADD COLUMN IF NOT EXISTS managed_user_ids TEXT",
+    ]
+    with _get_engine().connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+            except Exception:
+                pass
+
+
 def init_db() -> None:
     Base.metadata.create_all(_get_engine())
+    _run_migrations()
 
 
 _TAXONOMY_CODES: list[dict] = [
