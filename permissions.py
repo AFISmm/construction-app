@@ -31,13 +31,21 @@ def get_permission(user_id: int) -> Optional[UserPermission]:
 
 
 def is_super_admin(user_id: int) -> bool:
-    """Only the configured super admin email has access to Configurar perfiles."""
+    """Only the configured super admin email has access to Configurar perfiles.
+    Falls back to: user with no permission record (original full-access default)."""
     super_email = st.secrets.get("app", {}).get("super_admin_email", "").strip().lower()
-    if not super_email:
-        return False
     with get_session() as session:
         u = session.get(User, user_id)
-        return bool(u and u.email == super_email)
+        if not u:
+            return False
+        # Match configured email
+        if super_email and u.email.strip().lower() == super_email:
+            return True
+        # Fallback: if no super_admin_email configured, user with no permission record is super admin
+        if not super_email:
+            perm = session.query(UserPermission).filter_by(user_id=user_id).first()
+            return perm is None
+    return False
 
 
 def is_admin(user_id: int) -> bool:
