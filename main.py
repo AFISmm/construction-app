@@ -45,22 +45,29 @@ def _bootstrap() -> None:
             st.stop()
 
 
+def _flag_html(current_lang: str, s_param: str) -> str:
+    es_op = "1" if current_lang == "es" else "0.35"
+    en_op = "1" if current_lang == "en" else "0.35"
+    return f"""
+        <div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;">
+            <a href="?lang=es{s_param}" style="text-decoration:none;opacity:{es_op};">
+                <img src="https://flagcdn.com/w40/es.png" width="32" alt="ES"
+                     style="border-radius:3px;vertical-align:middle;">
+            </a>
+            <a href="?lang=en{s_param}" style="text-decoration:none;opacity:{en_op};">
+                <img src="https://flagcdn.com/w40/us.png" width="32" alt="EN"
+                     style="border-radius:3px;vertical-align:middle;">
+            </a>
+        </div>"""
+
+
 def _flag_links() -> None:
-    """Render fixed-position flag links that set ?lang= and preserve ?s= token."""
     current_lang = st.session_state.get("lang", "es")
     token = st.query_params.get("s", "")
     s_param = f"&s={token}" if token else ""
-    st.markdown(f"""
-        <div style="position:fixed;top:18px;right:20px;z-index:9999;
-                    display:flex;gap:10px;align-items:center;background:transparent;">
-            <a href="?lang=es{s_param}"
-               style="font-size:26px;text-decoration:none;
-                      opacity:{'1.0' if current_lang=='es' else '0.35'};">🇪🇸</a>
-            <a href="?lang=en{s_param}"
-               style="font-size:26px;text-decoration:none;
-                      opacity:{'1.0' if current_lang=='en' else '0.35'};">🇺🇸</a>
-        </div>
-    """, unsafe_allow_html=True)
+    with st.sidebar:
+        st.markdown(_flag_html(current_lang, s_param), unsafe_allow_html=True)
+        st.divider()
 
 
 def _sidebar(user: dict) -> None:
@@ -112,13 +119,10 @@ def _login_page() -> None:
 
     current_lang = st.session_state.get("lang", "es")
 
-    # Flag links — fixed top-right using HTML (renders emoji reliably)
-    st.markdown(f"""
-        <div style="position:fixed;top:18px;right:20px;z-index:9999;display:flex;gap:10px;align-items:center;">
-            <a href="?lang=es" style="font-size:28px;text-decoration:none;opacity:{'1' if current_lang=='es' else '0.45'};">🇪🇸</a>
-            <a href="?lang=en" style="font-size:28px;text-decoration:none;opacity:{'1' if current_lang=='en' else '0.45'};">🇺🇸</a>
-        </div>
-    """, unsafe_allow_html=True)
+    # Flag image links — top right corner
+    _, col_flags = st.columns([7, 3])
+    with col_flags:
+        st.markdown(_flag_html(current_lang, ""), unsafe_allow_html=True)
 
     st.title(t("auth.page_title"))
     _, form_col, _ = st.columns([1, 2, 1])
