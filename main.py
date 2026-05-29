@@ -207,7 +207,7 @@ def _login_page() -> None:
                 <img src="data:image/jpeg;base64,{logo_b64}"
                      style="width:380px;object-fit:contain;
                             mix-blend-mode:screen;
-                            filter:brightness(1.15) contrast(1.1);">
+                            filter:brightness(1.3) contrast(2.5) saturate(1.1);">
                 <p style="color:#ffffff;font-size:1.1rem;font-weight:600;
                           letter-spacing:0.08em;margin:0;text-align:center;
                           text-shadow: 0 0 8px rgba(224,90,32,0.5);">
@@ -222,7 +222,7 @@ def _login_page() -> None:
                 {t("auth.page_title").upper()}
             </p>
         """, unsafe_allow_html=True)
-    _, form_col, _ = st.columns([1, 2, 1])
+    _, form_col, _ = st.columns([2, 2, 2])
 
     step = st.session_state.get("_auth_step", "login")
 
