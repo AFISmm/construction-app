@@ -165,13 +165,30 @@ def _login_page() -> None:
                 background-color: #c84d1a !important;
             }
 
-            /* Tabs */
-            .stTabs [data-baseweb="tab-list"] { background-color: #162030 !important; border-radius:6px; }
-            .stTabs [data-baseweb="tab"] { color: #8ec5d6 !important; }
-            .stTabs [aria-selected="true"] { color: #4fc3f7 !important; border-bottom: 2px solid #4fc3f7 !important; }
+            /* Tabs — smaller, no red indicator line */
+            .stTabs [data-baseweb="tab-list"] {
+                background-color: #111111 !important;
+                border-radius: 6px !important;
+                gap: 0 !important;
+                border-bottom: 1px solid #2a2a2a !important;
+            }
+            .stTabs [data-baseweb="tab"] {
+                color: #8ec5d6 !important;
+                font-size: 0.8rem !important;
+                padding: 6px 14px !important;
+                background: transparent !important;
+            }
+            .stTabs [aria-selected="true"] {
+                color: #4fc3f7 !important;
+                background-color: #1a2a3a !important;
+                border-bottom: 2px solid #4fc3f7 !important;
+            }
+            /* Hide the animated red/orange sliding indicator */
+            .stTabs [data-baseweb="tab-highlight"] { display: none !important; }
+            .stTabs [data-baseweb="tab-border"]    { display: none !important; }
 
             /* Lang buttons */
-            .stButton > button { border-radius:4px !important; font-size:0.8rem !important; }
+            .stButton > button { border-radius: 4px !important; font-size: 0.75rem !important; }
         </style>
     """, unsafe_allow_html=True)
 
