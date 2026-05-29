@@ -120,30 +120,43 @@ def _step_review(project_id: int) -> None:
 
     if flagged_rows and has_api_key:
         if st.button(t("import.ai_suggest_button")):
+            from importer.ai_suggest import suggest_categories, suggest_category
+            assigned_count = 0
+            chunk_size = 15
+            all_suggestions: dict = {}
+
+            # Step 1 — batch (numeric-indexed, more reliable)
             with st.spinner(t("import.ai_suggest_loading")):
-                from importer.ai_suggest import suggest_categories
                 descs = [r["desc"] for r in flagged_rows]
-                # Batch in chunks of 20 to avoid token limits
-                all_suggestions: dict = {}
-                chunk_size = 20
                 for i in range(0, len(descs), chunk_size):
                     chunk = descs[i:i + chunk_size]
                     try:
                         result = suggest_categories(chunk, categories)
                         all_suggestions.update(result)
-                    except Exception as e:
-                        st.warning(f"Error en lote {i//chunk_size + 1}: {e}")
-                assigned_count = 0
-                for row in flagged_rows:
-                    code = all_suggestions.get(row["desc"])
-                    if code:
-                        label = code_to_label.get(code, "")
-                        if label:
-                            st.session_state[f"_ai_pending_{row['id']}"] = label
-                            st.session_state[f"_override_code_{row['id']}"] = code
-                            assigned_count += 1
+                    except Exception:
+                        pass
+
+            # Step 2 — per-row fallback for any still unassigned
+            still_missing = [r for r in flagged_rows if not all_suggestions.get(r["desc"])]
+            if still_missing:
+                with st.spinner(f"Completando {len(still_missing)} fila(s) restante(s)..."):
+                    for row in still_missing:
+                        code = suggest_category(row["desc"], categories)
+                        if code:
+                            all_suggestions[row["desc"]] = code
+
+            # Apply results
+            for row in flagged_rows:
+                code = all_suggestions.get(row["desc"])
+                if code:
+                    label = code_to_label.get(code, "")
+                    if label:
+                        st.session_state[f"_ai_pending_{row['id']}"] = label
+                        st.session_state[f"_override_code_{row['id']}"] = code
+                        assigned_count += 1
+
             if assigned_count > 0:
-                st.success(f"{assigned_count} categoría(s) asignada(s).")
+                st.success(f"{assigned_count} de {len(flagged_rows)} categoría(s) asignada(s).")
             else:
                 st.warning("La IA no pudo asignar categorías. Verifica la API key en Secrets.")
             st.rerun()
