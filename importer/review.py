@@ -305,36 +305,41 @@ def _commit_rows(project_id: int, job_id: int) -> int:
     import streamlit as _st
     merge_mode = _st.session_state.get("_import_mode", "new") == "merge"
     committed = 0
+
     with get_session() as session:
         rows = session.query(ImportRow).filter_by(import_job_id=job_id).all()
+
+        # Group amounts by category code — multiple items in same category get summed
+        code_totals: dict[str, float] = {}
+        code_desc: dict[str, str] = {}
         for row in rows:
             effective_code = row.override_code or row.matched_taxonomy_code
             if not effective_code:
                 row.status = "skipped"
                 continue
-
             amount = _safe_amount(row.original_amount)
-
-            existing = session.query(BudgetLine).filter_by(
-                project_id=project_id, category_code=effective_code
-            ).first()
-
-            if existing:
-                if merge_mode and amount > 0:
-                    existing.budgeted_amount = float(existing.budgeted_amount) + amount
-                    row.status = "confirmed"
-                    committed += 1
-                else:
-                    row.status = "skipped"
-                continue
-
-            session.add(BudgetLine(
-                project_id=project_id,
-                category_code=effective_code,
-                budgeted_amount=amount,
-                description=row.original_description,
-            ))
+            code_totals[effective_code] = code_totals.get(effective_code, 0.0) + amount
+            if effective_code not in code_desc:
+                code_desc[effective_code] = row.original_description
             row.status = "confirmed"
+
+        # Write one budget line per category code
+        for code, total_amount in code_totals.items():
+            existing = session.query(BudgetLine).filter_by(
+                project_id=project_id, category_code=code
+            ).first()
+            if existing:
+                if merge_mode:
+                    existing.budgeted_amount = float(existing.budgeted_amount) + total_amount
+                else:
+                    existing.budgeted_amount = total_amount
+            else:
+                session.add(BudgetLine(
+                    project_id=project_id,
+                    category_code=code,
+                    budgeted_amount=total_amount,
+                    description=code_desc.get(code, ""),
+                ))
             committed += 1
 
         job = session.get(ImportJob, job_id)
