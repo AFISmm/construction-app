@@ -58,35 +58,21 @@ _HIDE_CHROME = """
     </style>"""
 
 
-def _flag_links() -> None:
-    """Inject flag images fixed top-right via parent DOM + hide chrome."""
-    current_lang = st.session_state.get("lang", "es")
-    token = st.query_params.get("s", "")
-    s_param = f"&s={token}" if token else ""
-    es_op = "1.0" if current_lang == "es" else "0.35"
-    en_op = "1.0" if current_lang == "en" else "0.35"
+def _lang_buttons() -> None:
+    """Render ES / EN buttons at top-right of content area."""
     st.markdown(_HIDE_CHROME, unsafe_allow_html=True)
-    _components.html(f"""
-    <script>
-    (function() {{
-        var p = window.parent.document;
-        var el = p.getElementById('lang-flags');
-        if (!el) {{
-            el = p.createElement('div');
-            el.id = 'lang-flags';
-            el.style.cssText = 'position:fixed;top:12px;right:16px;z-index:99999;display:flex;gap:8px;align-items:center;';
-            p.body.appendChild(el);
-        }}
-        el.innerHTML = `
-            <a href="?lang=es{s_param}" target="_parent" style="text-decoration:none;opacity:{es_op};">
-                <img src="https://flagcdn.com/w40/es.png" width="30" style="border-radius:3px;display:block;">
-            </a>
-            <a href="?lang=en{s_param}" target="_parent" style="text-decoration:none;opacity:{en_op};">
-                <img src="https://flagcdn.com/w40/us.png" width="30" style="border-radius:3px;display:block;">
-            </a>`;
-    }})();
-    </script>
-    """, height=0, scrolling=False)
+    current = st.session_state.get("lang", "es")
+    _, c1, c2 = st.columns([8, 0.6, 0.6])
+    if c1.button("ES", key="_lang_es",
+                 type="primary" if current == "es" else "secondary",
+                 use_container_width=True):
+        set_language("es")
+        st.rerun()
+    if c2.button("EN", key="_lang_en",
+                 type="primary" if current == "en" else "secondary",
+                 use_container_width=True):
+        set_language("en")
+        st.rerun()
 
 
 def _sidebar(user: dict) -> None:
@@ -137,7 +123,7 @@ def _login_page() -> None:
         set_language(lang_param)
         st.rerun()
 
-    _flag_links()
+    _lang_buttons()
     st.title(t("auth.page_title"))
     _, form_col, _ = st.columns([1, 2, 1])
 
@@ -264,7 +250,7 @@ def main() -> None:
     pages = [p for k, p in page_map.items() if k in allowed]
     pages.append(st.Page("pages/project_form.py", title=t("project.create_title")))
     pg = st.navigation(pages, position="hidden")
-    _flag_links()
+    _lang_buttons()
     _sidebar(user)
     pg.run()
 
