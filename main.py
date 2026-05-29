@@ -175,19 +175,24 @@ def _login_page() -> None:
     if logo_path.exists():
         logo_b64 = _b64.b64encode(logo_path.read_bytes()).decode()
         st.markdown(f"""
-            <div style="display:flex;justify-content:center;margin-top:0.5rem;margin-bottom:0.2rem;">
+            <div style="display:flex;flex-direction:column;align-items:center;
+                        gap:0.4rem;margin-top:0.8rem;margin-bottom:0.8rem;">
                 <img src="data:image/jpeg;base64,{logo_b64}"
-                     style="height:80px;border-radius:8px;object-fit:contain;background:transparent;">
+                     style="height:60px;object-fit:contain;
+                            mix-blend-mode:screen;background:transparent;">
+                <p style="color:#ffffff;font-size:1.2rem;font-weight:600;
+                          letter-spacing:0.06em;margin:0;text-align:center;">
+                    {t("auth.page_title").upper()}
+                </p>
             </div>
         """, unsafe_allow_html=True)
-
-    # Centered title
-    st.markdown(f"""
-        <h1 style="text-align:center;color:#ffffff;font-size:1.3rem;
-                   margin-top:0.3rem;margin-bottom:1rem;letter-spacing:0.05em;">
-            {t("auth.page_title").upper()}
-        </h1>
-    """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <h1 style="text-align:center;color:#ffffff;font-size:1.3rem;
+                       margin:1rem 0;letter-spacing:0.05em;">
+                {t("auth.page_title").upper()}
+            </h1>
+        """, unsafe_allow_html=True)
     _, form_col, _ = st.columns([1, 2, 1])
 
     step = st.session_state.get("_auth_step", "login")
