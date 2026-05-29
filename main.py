@@ -116,10 +116,15 @@ def _login_page() -> None:
             [data-testid="stToolbar"]        { display:none!important; }
             [data-testid="stDecoration"]     { display:none!important; }
 
-            /* Full-page dark background */
-            .stApp { background-color: #0d1b2e !important; }
-            [data-testid="stMainBlockContainer"] { background-color: #0d1b2e !important; }
-            [data-testid="stMain"] { background-color: #0d1b2e !important; }
+            /* Full-page dark background — cover every Streamlit layer */
+            html, body, .stApp,
+            [data-testid="stAppViewContainer"],
+            [data-testid="stMain"],
+            [data-testid="stMainBlockContainer"],
+            .main, .block-container, section[data-testid="stMain"] > div {
+                background-color: #0d1b2e !important;
+                background: #0d1b2e !important;
+            }
 
             /* White text */
             .stApp, .stApp * { color: #ffffff; }
@@ -176,12 +181,16 @@ def _login_page() -> None:
         logo_b64 = _b64.b64encode(logo_path.read_bytes()).decode()
         st.markdown(f"""
             <div style="display:flex;flex-direction:column;align-items:center;
-                        gap:0.4rem;margin-top:0.8rem;margin-bottom:0.8rem;">
-                <img src="data:image/jpeg;base64,{logo_b64}"
-                     style="height:60px;object-fit:contain;
-                            mix-blend-mode:screen;background:transparent;">
-                <p style="color:#ffffff;font-size:1.2rem;font-weight:600;
-                          letter-spacing:0.06em;margin:0;text-align:center;">
+                        gap:0.5rem;margin-top:1rem;margin-bottom:1rem;
+                        background:#0d1b2e;">
+                <div style="background:#0d1b2e;width:100%;display:flex;justify-content:center;">
+                    <img src="data:image/jpeg;base64,{logo_b64}"
+                         style="width:260px;object-fit:contain;
+                                mix-blend-mode:screen;
+                                filter:contrast(1.05) brightness(1.05);">
+                </div>
+                <p style="color:#ffffff;font-size:1.15rem;font-weight:600;
+                          letter-spacing:0.07em;margin:0;text-align:center;">
                     {t("auth.page_title").upper()}
                 </p>
             </div>
