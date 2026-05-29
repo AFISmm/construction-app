@@ -45,11 +45,27 @@ def _bootstrap() -> None:
             st.stop()
 
 
+def _flag_links() -> None:
+    """Render fixed-position flag links that set ?lang= and preserve ?s= token."""
+    current_lang = st.session_state.get("lang", "es")
+    token = st.query_params.get("s", "")
+    s_param = f"&s={token}" if token else ""
+    st.markdown(f"""
+        <div style="position:fixed;top:18px;right:20px;z-index:9999;
+                    display:flex;gap:10px;align-items:center;background:transparent;">
+            <a href="?lang=es{s_param}"
+               style="font-size:26px;text-decoration:none;
+                      opacity:{'1.0' if current_lang=='es' else '0.35'};">🇪🇸</a>
+            <a href="?lang=en{s_param}"
+               style="font-size:26px;text-decoration:none;
+                      opacity:{'1.0' if current_lang=='en' else '0.35'};">🇺🇸</a>
+        </div>
+    """, unsafe_allow_html=True)
+
+
 def _sidebar(user: dict) -> None:
     allowed = get_allowed_pages(user["id"])
     with st.sidebar:
-        language_toggle()
-        st.divider()
         project_selector_sidebar(user["id"])
         if st.button(t("nav.new_project"), use_container_width=True):
             st.session_state["_edit_project_id"] = None
@@ -204,6 +220,14 @@ def _login_page() -> None:
 
 def main() -> None:
     _bootstrap()
+    # Handle language param (set by flag links on both login and app pages)
+    lang_param = st.query_params.get("lang")
+    if lang_param in ("es", "en"):
+        from i18n import _cache
+        st.session_state["lang"] = lang_param
+        _cache.clear()
+        st.query_params.pop("lang", None)
+        st.rerun()
     _restore_session()
     user = get_current_user()
     if not user:
@@ -225,6 +249,7 @@ def main() -> None:
     pages = [p for k, p in page_map.items() if k in allowed]
     pages.append(st.Page("pages/project_form.py", title=t("project.create_title")))
     pg = st.navigation(pages, position="hidden")
+    _flag_links()
     _sidebar(user)
     pg.run()
 

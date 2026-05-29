@@ -23,11 +23,13 @@ for p in projects:
     summary = get_project_summary(p.id)
     is_active = p.id == current_project_id
     badge = " ✓" if is_active else ""
+    type_label = t(f"project.type_badge_{p.project_type}")
 
     with st.container(border=True):
-        col_name, col_type, col_budget, col_pct, col_actions = st.columns([3, 1.5, 2, 1.5, 2])
+        col_name, col_budget, col_pct, col_actions = st.columns([3, 2, 1.5, 2])
+
         col_name.markdown(f"**{p.name}**{badge}")
-        col_type.caption(t(f"project.type_badge_{p.project_type}"))
+        col_name.caption(type_label)
 
         if summary:
             col_budget.metric(t("project.total_budget"), f"{summary.total_budgeted:,.0f}")
