@@ -31,12 +31,12 @@ class ProjectSummary:
 
 def get_user_projects(user_id: int) -> list[Project]:
     with get_session() as session:
-        return session.query(Project).filter_by(user_id=user_id).order_by(Project.created_at.desc()).all()
+        return session.query(Project).order_by(Project.created_at.desc()).all()
 
 
 def get_project(project_id: int, user_id: int) -> Optional[Project]:
     with get_session() as session:
-        return session.query(Project).filter_by(id=project_id, user_id=user_id).first()
+        return session.query(Project).filter_by(id=project_id).first()
 
 
 def create_project(user_id: int, name: str, project_type: str, description: str = "", currency: str = "COP") -> Project:
