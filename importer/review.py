@@ -112,15 +112,22 @@ def _step_review(project_id: int) -> None:
         if has_api_key:
             if st.button(t("import.ai_suggest_button")):
                 with st.spinner(t("import.ai_suggest_loading")):
-                    from importer.ai_suggest import suggest_categories
-                    descs = [r["desc"] for r in flagged_rows]
-                    suggestions = suggest_categories(descs, categories)
+                    from importer.ai_suggest import suggest_category
+                    assigned = 0
                     for row in flagged_rows:
-                        code = suggestions.get(row["desc"])
-                        if code:
-                            label = next((k for k, v in cat_map.items() if v == code), "")
-                            if label:
-                                st.session_state[f"_ai_pending_{row['id']}"] = label
+                        try:
+                            code = suggest_category(row["desc"], categories)
+                            if code:
+                                label = next((k for k, v in cat_map.items() if v == code), "")
+                                if label:
+                                    st.session_state[f"_ai_pending_{row['id']}"] = label
+                                    assigned += 1
+                        except Exception as e:
+                            st.warning(f"Error en fila '{row['desc'][:30]}': {e}")
+                if assigned > 0:
+                    st.success(f"{assigned} categoría(s) asignada(s).")
+                else:
+                    st.warning("La IA no pudo asignar categorías. Verifica la API key en Secrets.")
                 st.rerun()
 
     # Column headers
