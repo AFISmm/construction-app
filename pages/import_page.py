@@ -29,7 +29,7 @@ if current_mode is None:
 mode_label = t("import.mode_new") if current_mode == "new" else t("import.mode_merge")
 col_info, col_change = st.columns([4, 1])
 col_info.info(f"**Modo:** {mode_label}")
-if col_change.button(t("common.cancel")):
+if col_change.button(t("common.cancel"), key="cancel_mode"):
     st.session_state.pop("_import_mode", None)
     st.session_state.pop("_import_step", None)
     st.session_state.pop("_import_job_id", None)
