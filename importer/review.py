@@ -210,13 +210,15 @@ def _step_confirm(project_id: int) -> None:
     st.success(t("import.success", n=committed))
 
     col1, col2 = st.columns(2)
-    if col1.button(t("nav.budget")):
+    if col1.button(t("nav.dashboard")):
         st.session_state["_import_step"] = "upload"
         st.session_state.pop("_import_job_id", None)
-        st.switch_page("pages/budget.py")
+        st.session_state.pop("_import_mode", None)
+        st.switch_page("pages/dashboard.py")
     if col2.button(t("import.upload_label")):
         st.session_state["_import_step"] = "upload"
         st.session_state.pop("_import_job_id", None)
+        st.session_state.pop("_import_mode", None)
         st.rerun()
 
 
