@@ -45,29 +45,39 @@ def _bootstrap() -> None:
             st.stop()
 
 
-def _flag_html(current_lang: str, s_param: str) -> str:
-    es_op = "1" if current_lang == "es" else "0.35"
-    en_op = "1" if current_lang == "en" else "0.35"
-    return f"""
-        <div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;">
-            <a href="?lang=es{s_param}" style="text-decoration:none;opacity:{es_op};">
-                <img src="https://flagcdn.com/w40/es.png" width="32" alt="ES"
-                     style="border-radius:3px;vertical-align:middle;">
-            </a>
-            <a href="?lang=en{s_param}" style="text-decoration:none;opacity:{en_op};">
-                <img src="https://flagcdn.com/w40/us.png" width="32" alt="EN"
-                     style="border-radius:3px;vertical-align:middle;">
-            </a>
-        </div>"""
+_HIDE_CHROME = """
+    <style>
+        header[data-testid="stHeader"]   { display:none!important; }
+        #MainMenu                        { display:none!important; }
+        .stDeployButton                  { display:none!important; }
+        [data-testid="stToolbar"]        { display:none!important; }
+        [data-testid="stDecoration"]     { display:none!important; }
+        [data-testid="stStatusWidget"]   { display:none!important; }
+        footer                           { display:none!important; }
+    </style>"""
 
 
 def _flag_links() -> None:
+    """Render flag images fixed top-right, preserving session token in URL."""
     current_lang = st.session_state.get("lang", "es")
     token = st.query_params.get("s", "")
     s_param = f"&s={token}" if token else ""
-    with st.sidebar:
-        st.markdown(_flag_html(current_lang, s_param), unsafe_allow_html=True)
-        st.divider()
+    es_op = "1.0" if current_lang == "es" else "0.3"
+    en_op = "1.0" if current_lang == "en" else "0.3"
+    st.markdown(f"""
+        {_HIDE_CHROME}
+        <div style="position:fixed;top:12px;right:16px;z-index:99999;
+                    display:flex;gap:8px;align-items:center;">
+            <a href="?lang=es{s_param}" style="text-decoration:none;opacity:{es_op};">
+                <img src="https://flagcdn.com/w40/es.png" width="30" alt="ES"
+                     style="border-radius:3px;display:block;">
+            </a>
+            <a href="?lang=en{s_param}" style="text-decoration:none;opacity:{en_op};">
+                <img src="https://flagcdn.com/w40/us.png" width="30" alt="EN"
+                     style="border-radius:3px;display:block;">
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 
 
 def _sidebar(user: dict) -> None:
@@ -77,7 +87,7 @@ def _sidebar(user: dict) -> None:
         if st.button(t("nav.new_project"), use_container_width=True):
             st.session_state["_edit_project_id"] = None
             st.switch_page("pages/project_form.py")
-        st.divider()
+        st.markdown("---")
         if "projects"   in allowed: st.page_link("pages/project_list.py", label=t("nav.projects"))
         if "dashboard"  in allowed: st.page_link("pages/dashboard.py",    label=t("nav.dashboard"))
         if "budget"     in allowed: st.page_link("pages/budget.py",       label=t("nav.budget"))
@@ -86,8 +96,8 @@ def _sidebar(user: dict) -> None:
         if "progress"   in allowed: st.page_link("pages/progress.py",     label=t("nav.progress"))
         if "rooms"      in allowed: st.page_link("pages/rooms.py",        label=t("nav.rooms"))
         if "account"    in allowed: st.page_link("pages/account.py",      label=t("nav.account"))
-        if "admin"      in allowed: st.page_link("pages/admin.py",        label="⚙ Administración")
-        st.divider()
+        if "admin"      in allowed: st.page_link("pages/admin.py",        label="⚙ Admin")
+        st.markdown("---")
         if st.button(t("nav.logout"), use_container_width=True):
             token = st.query_params.get("s")
             if token:
@@ -118,11 +128,22 @@ def _login_page() -> None:
         st.rerun()
 
     current_lang = st.session_state.get("lang", "es")
-
-    # Flag image links — top right corner
-    _, col_flags = st.columns([7, 3])
-    with col_flags:
-        st.markdown(_flag_html(current_lang, ""), unsafe_allow_html=True)
+    es_op = "1.0" if current_lang == "es" else "0.3"
+    en_op = "1.0" if current_lang == "en" else "0.3"
+    st.markdown(f"""
+        {_HIDE_CHROME}
+        <div style="position:fixed;top:12px;right:16px;z-index:99999;
+                    display:flex;gap:8px;align-items:center;">
+            <a href="?lang=es" style="text-decoration:none;opacity:{es_op};">
+                <img src="https://flagcdn.com/w40/es.png" width="30" alt="ES"
+                     style="border-radius:3px;display:block;">
+            </a>
+            <a href="?lang=en" style="text-decoration:none;opacity:{en_op};">
+                <img src="https://flagcdn.com/w40/us.png" width="30" alt="EN"
+                     style="border-radius:3px;display:block;">
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 
     st.title(t("auth.page_title"))
     _, form_col, _ = st.columns([1, 2, 1])
