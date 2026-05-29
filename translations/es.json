@@ -136,6 +136,9 @@
   "import.status_complete": "Completado",
   "import.status_failed": "Fallido",
   "import.duplicate_warning": "Esta fila crearia una linea duplicada.",
+  "import.choose_mode": "Selecciona como quieres importar:",
+  "import.mode_new": "Importar nuevo",
+  "import.mode_merge": "Importar en el mismo proyecto",
   "import.ai_suggest_button": "Asignar Categoria",
   "import.ai_suggest_loading": "Analizando con IA...",
 

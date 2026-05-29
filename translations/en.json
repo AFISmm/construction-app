@@ -136,6 +136,9 @@
   "import.status_complete": "Complete",
   "import.status_failed": "Failed",
   "import.duplicate_warning": "This row would create a duplicate line.",
+  "import.choose_mode": "Select how you want to import:",
+  "import.mode_new": "Import as new",
+  "import.mode_merge": "Add to existing project",
   "import.ai_suggest_button": "Assign Category",
   "import.ai_suggest_loading": "Analyzing with AI...",
 

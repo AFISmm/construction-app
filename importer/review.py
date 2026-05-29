@@ -269,8 +269,9 @@ def _apply_overrides(overrides: dict[int, Optional[str]]) -> None:
 
 
 def _commit_rows(project_id: int, job_id: int) -> int:
+    import streamlit as _st
+    merge_mode = _st.session_state.get("_import_mode", "new") == "merge"
     committed = 0
-    today = date.today()
     with get_session() as session:
         rows = session.query(ImportRow).filter_by(import_job_id=job_id).all()
         for row in rows:
@@ -282,8 +283,14 @@ def _commit_rows(project_id: int, job_id: int) -> int:
             existing = session.query(BudgetLine).filter_by(
                 project_id=project_id, category_code=effective_code
             ).first()
+
             if existing:
-                row.status = "skipped"
+                if merge_mode and row.original_amount:
+                    existing.budgeted_amount = float(existing.budgeted_amount) + float(row.original_amount or 0)
+                    row.status = "confirmed"
+                    committed += 1
+                else:
+                    row.status = "skipped"
                 continue
 
             session.add(BudgetLine(
