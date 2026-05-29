@@ -1,7 +1,7 @@
 """Admin panel — manage users, roles, and permissions."""
 import streamlit as st
 
-from auth import require_auth
+from auth import require_auth, set_password
 from i18n import t
 from permissions import (
     ALL_PAGES, PAGE_FILES, get_all_users_with_permissions,
@@ -83,3 +83,15 @@ for u in users:
                     st.rerun()
             else:
                 st.caption("No puedes modificar tus propios permisos.")
+
+        # Password reset (outside form)
+        if not is_self:
+            with st.expander("🔑 Restablecer contraseña"):
+                with st.form(f"pwd_form_{u['id']}"):
+                    new_pwd = st.text_input("Nueva contraseña", type="password", key=f"npwd_{u['id']}")
+                    if st.form_submit_button("Guardar contraseña"):
+                        if len(new_pwd) < 6:
+                            st.error("Mínimo 6 caracteres.")
+                        else:
+                            set_password(u["id"], new_pwd)
+                            st.success("Contraseña actualizada.")

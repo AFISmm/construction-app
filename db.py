@@ -212,6 +212,14 @@ class ImportRow(Base):
     job: Mapped[ImportJob] = relationship(back_populates="rows")
 
 
+class UserPassword(Base):
+    __tablename__ = "user_passwords"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+
+
 class UserSession(Base):
     __tablename__ = "user_sessions"
 

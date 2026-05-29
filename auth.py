@@ -8,7 +8,9 @@ from datetime import datetime, timedelta, timezone
 
 import streamlit as st
 
-from db import OtpToken, User, UserSession, get_session
+import os
+
+from db import OtpToken, User, UserPassword, UserSession, get_session
 
 MAX_ATTEMPTS = 5
 SESSION_TTL_DAYS = 30
@@ -170,6 +172,62 @@ def require_auth() -> dict:
     if not user:
         st.stop()
     return user
+
+
+# ---------------------------------------------------------------------------
+# Password authentication
+# ---------------------------------------------------------------------------
+
+def _hash_password(password: str) -> str:
+    salt = os.urandom(16)
+    key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 200_000)
+    return salt.hex() + ":" + key.hex()
+
+
+def _verify_password_hash(password: str, stored: str) -> bool:
+    try:
+        salt_hex, key_hex = stored.split(":")
+        salt = bytes.fromhex(salt_hex)
+        key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 200_000)
+        return key.hex() == key_hex
+    except Exception:
+        return False
+
+
+def set_password(user_id: int, password: str) -> None:
+    h = _hash_password(password)
+    with get_session() as session:
+        existing = session.get(UserPassword, user_id)
+        if existing:
+            existing.password_hash = h
+        else:
+            session.add(UserPassword(user_id=user_id, password_hash=h))
+
+
+def login_with_password(email: str, password: str) -> str:
+    """Return 'ok', 'no_password', or 'invalid'."""
+    email = email.strip().lower()
+    with get_session() as session:
+        user = session.query(User).filter_by(email=email).first()
+        if not user:
+            return "invalid"
+        pwd = session.get(UserPassword, user.id)
+        if not pwd:
+            return "no_password"
+        if not _verify_password_hash(password, pwd.password_hash):
+            return "invalid"
+        st.session_state["user_id"] = user.id
+        st.session_state["user_email"] = user.email
+        return "ok"
+
+
+def user_has_password(email: str) -> bool:
+    email = email.strip().lower()
+    with get_session() as session:
+        user = session.query(User).filter_by(email=email).first()
+        if not user:
+            return False
+        return session.get(UserPassword, user.id) is not None
 
 
 def create_persistent_session(user_id: int) -> str:

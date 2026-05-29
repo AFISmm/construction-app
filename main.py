@@ -5,7 +5,8 @@ import streamlit as st
 
 from auth import (
     RateLimitError, create_persistent_session, get_current_user,
-    invalidate_persistent_session, logout, send_otp, validate_persistent_session,
+    invalidate_persistent_session, login_with_password, logout,
+    send_otp, set_password, user_has_password, validate_persistent_session,
     verify_otp,
 )
 from db import init_db, seed_categories
@@ -73,36 +74,27 @@ def _sidebar(user: dict) -> None:
 
 
 def _login_page() -> None:
-    # Hide sidebar, header and Streamlit toolbar
+    # Hide sidebar and Streamlit chrome
     st.markdown("""
         <style>
-            [data-testid="stSidebar"]    { display: none !important; }
-            [data-testid="collapsedControl"] { display: none !important; }
-            header[data-testid="stHeader"]   { display: none !important; }
-            #MainMenu                        { display: none !important; }
-            .stDeployButton                  { display: none !important; }
-            [data-testid="stToolbar"]        { display: none !important; }
-            [data-testid="stDecoration"]     { display: none !important; }
-            /* Style flag radio to look like small icon buttons */
-            div[data-testid="stHorizontalBlock"] .stRadio label {
-                font-size: 26px !important;
-                padding: 2px 6px !important;
-                cursor: pointer !important;
-            }
-            div[data-testid="stHorizontalBlock"] .stRadio {
-                gap: 4px !important;
-            }
+            [data-testid="stSidebar"]        { display: none !important; }
+            [data-testid="collapsedControl"]  { display: none !important; }
+            header[data-testid="stHeader"]    { display: none !important; }
+            #MainMenu                         { display: none !important; }
+            .stDeployButton                   { display: none !important; }
+            [data-testid="stToolbar"]         { display: none !important; }
+            [data-testid="stDecoration"]      { display: none !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    # Flag selector — top right corner
+    # Flag selector — top right
     current_lang = st.session_state.get("lang", "es")
     _, col_flags = st.columns([8, 2])
     with col_flags:
         lang_choice = st.radio(
             "",
             options=["es", "en"],
-            format_func=lambda x: "🇪🇸" if x == "es" else "🇺🇸",
+            format_func=lambda x: "🇪🇸 ES" if x == "es" else "🇺🇸 EN",
             index=0 if current_lang == "es" else 1,
             horizontal=True,
             label_visibility="collapsed",
@@ -113,52 +105,61 @@ def _login_page() -> None:
         st.rerun()
 
     st.title(t("auth.page_title"))
-    step = st.session_state.get("_auth_step", "email")
 
-    if step == "email":
+    step = st.session_state.get("_auth_step", "login")
+
+    if step == "set_password":
+        email = st.session_state.get("_pending_email", "")
+        st.info(f"**{email}** — {t('auth.set_password_title')}")
+        with st.form("set_pwd_form"):
+            pwd1 = st.text_input(t("auth.set_password_label"), type="password")
+            pwd2 = st.text_input(t("auth.confirm_password_label"), type="password")
+            if st.form_submit_button(t("auth.set_password_button")):
+                if len(pwd1) < 6:
+                    st.error(t("auth.password_too_short"))
+                elif pwd1 != pwd2:
+                    st.error(t("auth.password_mismatch"))
+                else:
+                    from db import User, get_session as _gs
+                    with _gs() as _s:
+                        u = _s.query(User).filter_by(email=email).first()
+                        if not u:
+                            u = User(email=email)
+                            _s.add(u)
+                            _s.flush()
+                        uid = u.id
+                    set_password(uid, pwd1)
+                    st.success(t("auth.password_saved"))
+                    st.session_state.pop("_auth_step", None)
+                    st.session_state.pop("_pending_email", None)
+                    st.rerun()
+        return
+
+    # Default: email + password login
+    _, form_col, _ = st.columns([1, 2, 1])
+    with form_col:
         with st.form("login_form"):
             email = st.text_input(t("auth.email_label"), placeholder=t("auth.email_placeholder"))
-            submitted = st.form_submit_button(t("auth.send_otp_button"))
+            password = st.text_input(t("auth.password_label"), type="password",
+                                     placeholder=t("auth.password_placeholder"))
+            submitted = st.form_submit_button(t("auth.login_button"), use_container_width=True)
         if submitted:
             if not email or "@" not in email:
                 st.error(t("error.invalid_email"))
+            elif not password:
+                st.error(t("auth.password_too_short"))
             else:
-                try:
-                    send_otp(email)
-                    st.session_state["_pending_email"] = email
-                    st.session_state["_auth_step"] = "otp"
+                result = login_with_password(email, password)
+                if result == "ok":
+                    token = create_persistent_session(st.session_state["user_id"])
+                    st.query_params["s"] = token
                     st.rerun()
-                except RateLimitError:
-                    st.error(t("auth.otp_rate_limited"))
-                except Exception:
-                    st.error(t("error.server"))
-
-    elif step == "otp":
-        email = st.session_state.get("_pending_email", "")
-        st.info(t("auth.otp_sent", email=email))
-        with st.form("otp_form"):
-            code = st.text_input(t("auth.otp_label"), placeholder=t("auth.otp_placeholder"), max_chars=6)
-            submitted = st.form_submit_button(t("auth.verify_button"))
-        if submitted:
-            result = verify_otp(email, code)
-            if result == "ok":
-                st.session_state.pop("_auth_step", None)
-                st.session_state.pop("_pending_email", None)
-                token = create_persistent_session(st.session_state["user_id"])
-                st.query_params["s"] = token
-                st.rerun()
-            elif result == "expired":
-                st.error(t("auth.otp_expired"))
-            else:
-                st.error(t("auth.otp_invalid", n=1))
-        if st.button(t("auth.resend_link")):
-            try:
-                send_otp(email)
-                st.info(t("auth.otp_sent", email=email))
-            except RateLimitError:
-                st.error(t("auth.otp_rate_limited"))
-            except Exception:
-                st.error(t("error.server"))
+                elif result == "no_password":
+                    st.session_state["_pending_email"] = email.strip().lower()
+                    st.session_state["_auth_step"] = "set_password"
+                    st.rerun()
+                else:
+                    st.error(t("auth.invalid_credentials"))
 
 
 def main() -> None:
