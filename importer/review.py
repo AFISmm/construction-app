@@ -63,14 +63,6 @@ def _step_upload(project_id: int) -> None:
 
 
 def _step_review(project_id: int) -> None:
-    # Apply any pending AI suggestions BEFORE widgets render
-    for key in list(st.session_state.keys()):
-        if key.startswith("_ai_pending_"):
-            row_id = key[len("_ai_pending_"):]
-            label = st.session_state.pop(key)
-            if label:
-                st.session_state[f"override_{row_id}"] = label
-
     job_id = st.session_state.get("_import_job_id")
     if not job_id:
         st.session_state["_import_step"] = "upload"
@@ -101,34 +93,52 @@ def _step_review(project_id: int) -> None:
 
     cat_options = [""] + [_cat_label(c) for c in categories]
     cat_map = {_cat_label(c): c.code for c in categories}
+    code_to_label = {c.code: _cat_label(c) for c in categories}
+
+    # Apply AI pending suggestions and re-translate stored codes — BEFORE widgets render
+    for key in list(st.session_state.keys()):
+        if key.startswith("_ai_pending_"):
+            row_id = key[len("_ai_pending_"):]
+            label = st.session_state.pop(key)
+            if label:
+                st.session_state[f"override_{row_id}"] = label
+        elif key.startswith("_override_code_"):
+            row_id = key[len("_override_code_"):]
+            code = st.session_state[key]
+            if code and code in code_to_label:
+                st.session_state[f"override_{row_id}"] = code_to_label[code]
 
     has_api_key = bool(st.secrets.get("anthropic", {}).get("api_key", ""))
     flagged_ids: list[int] = []
     pending_overrides: dict[int, Optional[str]] = {}
 
     flagged_rows = [r for r in row_data if r["confidence"] < LOW_CONFIDENCE_THRESHOLD]
-    if flagged_rows:
+    unassigned_flags = [r for r in flagged_rows if not st.session_state.get(f"override_{r['id']}", "")]
+
+    if unassigned_flags:
         st.warning(t("import.low_confidence_warning"))
-        if has_api_key:
-            if st.button(t("import.ai_suggest_button")):
-                with st.spinner(t("import.ai_suggest_loading")):
-                    from importer.ai_suggest import suggest_category
-                    assigned = 0
-                    for row in flagged_rows:
-                        try:
-                            code = suggest_category(row["desc"], categories)
-                            if code:
-                                label = next((k for k, v in cat_map.items() if v == code), "")
-                                if label:
-                                    st.session_state[f"_ai_pending_{row['id']}"] = label
-                                    assigned += 1
-                        except Exception as e:
-                            st.warning(f"Error en fila '{row['desc'][:30]}': {e}")
-                if assigned > 0:
-                    st.success(f"{assigned} categoría(s) asignada(s).")
-                else:
-                    st.warning("La IA no pudo asignar categorías. Verifica la API key en Secrets.")
-                st.rerun()
+
+    if flagged_rows and has_api_key:
+        if st.button(t("import.ai_suggest_button")):
+            with st.spinner(t("import.ai_suggest_loading")):
+                from importer.ai_suggest import suggest_category
+                assigned_count = 0
+                for row in flagged_rows:
+                    try:
+                        code = suggest_category(row["desc"], categories)
+                        if code:
+                            label = code_to_label.get(code, "")
+                            if label:
+                                st.session_state[f"_ai_pending_{row['id']}"] = label
+                                st.session_state[f"_override_code_{row['id']}"] = code
+                                assigned_count += 1
+                    except Exception as e:
+                        st.warning(f"Error: {e}")
+            if assigned_count > 0:
+                st.success(f"{assigned_count} categoría(s) asignada(s).")
+            else:
+                st.warning("La IA no pudo asignar categorías. Verifica la API key en Secrets.")
+            st.rerun()
 
     # Column headers
     h_desc, h_cat = st.columns([4, 4])
@@ -139,8 +149,8 @@ def _step_review(project_id: int) -> None:
     for row in row_data:
         conf = row["confidence"]
         flag = conf < LOW_CONFIDENCE_THRESHOLD
-        assigned = bool(st.session_state.get(f"override_{row['id']}", ""))
-        marker = ":green[✓]" if (not flag or assigned) else ":orange[⚠]"
+        is_assigned = bool(st.session_state.get(f"override_{row['id']}", ""))
+        marker = ":green[✓]" if (not flag or is_assigned) else ":orange[⚠]"
         c_desc, c_cat = st.columns([4, 4])
         c_desc.write(f"{marker} {row['desc']}")
 
@@ -155,9 +165,12 @@ def _step_review(project_id: int) -> None:
                 key=f"override_{row['id']}",
                 label_visibility="collapsed",
             )
-            pending_overrides[row["id"]] = cat_map.get(selected) if selected else None
+            code = cat_map.get(selected) if selected else None
+            pending_overrides[row["id"]] = code
+            if code:
+                st.session_state[f"_override_code_{row['id']}"] = code
         else:
-            matched_label = next((k for k, v in cat_map.items() if v == row["code"]), "—")
+            matched_label = code_to_label.get(row["code"], "—")
             c_cat.write(matched_label)
 
     unresolved = sum(1 for rid in flagged_ids if not pending_overrides.get(rid))
