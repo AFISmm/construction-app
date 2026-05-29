@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import streamlit as st
-import streamlit.components.v1 as _components
 
 from auth import (
     RateLimitError, create_persistent_session, get_current_user,
@@ -224,7 +223,7 @@ def _login_page() -> None:
 
 def main() -> None:
     _bootstrap()
-    # Handle language param set by flag links (don't delete — just apply if changed)
+    # Handle language param from URL (don't delete — just apply if changed)
     lang_param = st.query_params.get("lang")
     if lang_param in ("es", "en") and lang_param != st.session_state.get("lang"):
         set_language(lang_param)
