@@ -168,14 +168,15 @@ for u in visible_users:
                     selected_pages.append(key)
 
             st.markdown("**Proyectos visibles** *(Viewer)*:")
-            all_proj = st.checkbox("Todos", value=u["allowed_project_ids"] is None, key=f"ap_{u['id']}")
-            selected_project_ids = None
-            if not all_proj:
-                selected_project_ids = []
-                for pname, pid in project_options.items():
-                    checked_p = u["allowed_project_ids"] is not None and pid in u["allowed_project_ids"]
-                    if st.checkbox(pname, value=checked_p, key=f"proj_{u['id']}_{pid}"):
-                        selected_project_ids.append(pid)
+            selected_project_ids = []
+            for pname, pid in project_options.items():
+                checked_p = (u["allowed_project_ids"] is None or
+                             (u["allowed_project_ids"] is not None and pid in u["allowed_project_ids"]))
+                if st.checkbox(pname, value=checked_p, key=f"proj_{u['id']}_{pid}"):
+                    selected_project_ids.append(pid)
+            # All checked = no restriction (None), otherwise use the list
+            if len(selected_project_ids) == len(project_options):
+                selected_project_ids = None
 
             # Managed users
             st.markdown("**Correos visibles**")
