@@ -11,7 +11,7 @@ from auth import (
 )
 from db import init_db, seed_categories
 from i18n import language_toggle, set_language, t
-from permissions import PAGE_FILES, get_allowed_pages, get_visible_projects, is_admin
+from permissions import PAGE_FILES, VIEWER_DEFAULT_PAGES, get_allowed_pages, get_visible_projects, is_admin, is_viewer, save_permission
 from projects import project_selector_sidebar
 
 st.set_page_config(page_title="Control de Presupuesto", layout="wide", initial_sidebar_state="expanded")
@@ -79,9 +79,10 @@ def _sidebar(user: dict) -> None:
     with st.sidebar:
         # Project selector (read-only display + dropdown to switch)
         project_selector_sidebar(user["id"])
-        if st.button(t("nav.new_project"), use_container_width=True):
-            st.session_state["_edit_project_id"] = None
-            st.switch_page("pages/project_form.py")
+        if not st.session_state.get("is_viewer", False):
+            if st.button(t("nav.new_project"), use_container_width=True):
+                st.session_state["_edit_project_id"] = None
+                st.switch_page("pages/project_form.py")
         st.divider()
         # Navigation — fixed order for all users
         if "dashboard"  in allowed: st.page_link("pages/dashboard.py",    label=t("nav.dashboard"))
@@ -123,6 +124,12 @@ def _login_page() -> None:
         st.rerun()
 
     _lang_buttons()
+    # Logo
+    from pathlib import Path as _Path
+    logo_path = _Path(__file__).parent / "Logo.jpeg"
+    if logo_path.exists():
+        _, logo_col, _ = st.columns([1, 2, 1])
+        logo_col.image(str(logo_path), use_container_width=True)
     st.title(t("auth.page_title"))
     _, form_col, _ = st.columns([1, 2, 1])
 
@@ -215,8 +222,11 @@ def _login_page() -> None:
                             st.error(t("auth.email_already_registered"))
                         elif uid_new:
                             set_password(uid_new, reg_pwd1)
+                            # New users are viewers by default
+                            save_permission(uid_new, "viewer", VIEWER_DEFAULT_PAGES, None)
                             st.session_state["user_id"] = uid_new
                             st.session_state["user_email"] = reg_email.strip().lower()
+                            st.session_state["is_viewer"] = True
                             token = create_persistent_session(uid_new)
                             st.query_params["s"] = token
                             st.rerun()
@@ -234,6 +244,9 @@ def main() -> None:
     if not user:
         _login_page()
         return
+    # Cache viewer status in session state
+    if "is_viewer" not in st.session_state:
+        st.session_state["is_viewer"] = is_viewer(user["id"])
 
     allowed = get_allowed_pages(user["id"])
     page_map = {

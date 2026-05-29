@@ -48,6 +48,19 @@ def is_super_admin(user_id: int) -> bool:
     return False
 
 
+VIEWER_DEFAULT_PAGES = ["dashboard", "projects", "progress", "expenses", "rooms", "account"]
+
+
+def is_viewer(user_id: int) -> bool:
+    """True if user has explicit viewer role."""
+    if is_super_admin(user_id):
+        return False
+    perm = get_permission(user_id)
+    if perm is None:
+        return False
+    return perm.role == "viewer"
+
+
 def is_admin(user_id: int) -> bool:
     """Admins have full app access but NOT Configurar perfiles."""
     if is_super_admin(user_id):

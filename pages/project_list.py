@@ -43,6 +43,7 @@ for p in projects:
                 if st.button(t("common.select"), key=f"sel_{p.id}", use_container_width=True):
                     st.session_state["current_project_id"] = p.id
                     st.rerun()
-            if st.button(t("common.edit"), key=f"edit_{p.id}", use_container_width=True):
-                st.session_state["_edit_project_id"] = p.id
-                st.switch_page("pages/project_form.py")
+            if not st.session_state.get("is_viewer", False):
+                if st.button(t("common.edit"), key=f"edit_{p.id}", use_container_width=True):
+                    st.session_state["_edit_project_id"] = p.id
+                    st.switch_page("pages/project_form.py")

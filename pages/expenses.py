@@ -16,6 +16,8 @@ if not project_id:
 
 st.title(t("expense.title"))
 
+_read_only = st.session_state.get("is_viewer", False)
+
 lines = get_budget_lines(project_id)
 if not lines:
     st.info(t("budget.no_lines"))
@@ -70,9 +72,9 @@ for top_code in sorted(groups.keys()):
         c5.write(f":red[{balance:,.0f}]" if balance < 0 else f"{balance:,.0f}")
         c6.write("—")
 
-        # Add expense button
+        # Add expense button (hidden for viewers)
         add_key = f"_add_{line.id}"
-        if c7.button("＋", key=f"btn_{line.id}", help=t("expense.add_expense")):
+        if not _read_only and c7.button("＋", key=f"btn_{line.id}", help=t("expense.add_expense")):
             st.session_state[add_key] = not st.session_state.get(add_key, False)
 
         # Inline add expense form
@@ -103,7 +105,7 @@ for top_code in sorted(groups.keys()):
             e4.caption(f"{float(exp.amount):,.0f}")
             e5.caption("—")
             e6.caption(str(exp.expense_date))
-            if e7.button("x", key=f"del_{exp.id}", help=t("common.delete")):
+            if not _read_only and e7.button("x", key=f"del_{exp.id}", help=t("common.delete")):
                 delete_expense(exp.id, project_id)
                 st.rerun()
 
