@@ -1,7 +1,7 @@
 """SQLAlchemy 2.x models and session factory for the construction budget app."""
 from contextlib import contextmanager
 from datetime import date, datetime
-from typing import Generator, Optional
+from typing import Generator, List, Optional
 
 import streamlit as st
 from sqlalchemy import (
@@ -64,8 +64,8 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(254), nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
-    otp_tokens: Mapped[list[OtpToken]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    projects: Mapped[list[Project]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    otp_tokens: Mapped[List["OtpToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    projects: Mapped[List["Project"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class OtpToken(Base):
@@ -98,10 +98,10 @@ class Project(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
     user: Mapped[User] = relationship(back_populates="projects")
-    rooms: Mapped[list[Room]] = relationship(back_populates="project", cascade="all, delete-orphan")
-    budget_lines: Mapped[list[BudgetLine]] = relationship(back_populates="project", cascade="all, delete-orphan")
-    expenses: Mapped[list[Expense]] = relationship(back_populates="project", cascade="all, delete-orphan")
-    import_jobs: Mapped[list[ImportJob]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    rooms: Mapped[List["Room"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    budget_lines: Mapped[List["BudgetLine"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    expenses: Mapped[List["Expense"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    import_jobs: Mapped[List["ImportJob"]] = relationship(back_populates="project", cascade="all, delete-orphan")
 
 
 class Category(Base):
@@ -116,9 +116,9 @@ class Category(Base):
     description: Mapped[Optional[str]] = mapped_column(Text)
     level: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    children: Mapped[list[Category]] = relationship(back_populates="parent")
+    children: Mapped[List["Category"]] = relationship(back_populates="parent")
     parent: Mapped[Optional[Category]] = relationship(back_populates="children", remote_side="Category.code")
-    budget_lines: Mapped[list[BudgetLine]] = relationship(back_populates="category")
+    budget_lines: Mapped[List["BudgetLine"]] = relationship(back_populates="category")
 
 
 class Room(Base):
@@ -131,7 +131,7 @@ class Room(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     project: Mapped[Project] = relationship(back_populates="rooms")
-    budget_lines: Mapped[list[BudgetLine]] = relationship(back_populates="room")
+    budget_lines: Mapped[List["BudgetLine"]] = relationship(back_populates="room")
 
 
 class BudgetLine(Base):
@@ -149,7 +149,7 @@ class BudgetLine(Base):
     project: Mapped[Project] = relationship(back_populates="budget_lines")
     category: Mapped[Category] = relationship(back_populates="budget_lines")
     room: Mapped[Optional[Room]] = relationship(back_populates="budget_lines")
-    expenses: Mapped[list[Expense]] = relationship(back_populates="budget_line")
+    expenses: Mapped[List["Expense"]] = relationship(back_populates="budget_line")
 
 
 class Expense(Base):
@@ -188,7 +188,7 @@ class ImportJob(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
     project: Mapped[Project] = relationship(back_populates="import_jobs")
-    rows: Mapped[list[ImportRow]] = relationship(back_populates="job", cascade="all, delete-orphan")
+    rows: Mapped[List["ImportRow"]] = relationship(back_populates="job", cascade="all, delete-orphan")
 
 
 class ImportRow(Base):
