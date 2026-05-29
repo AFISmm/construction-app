@@ -1,6 +1,4 @@
 """SQLAlchemy 2.x models and session factory for the construction budget app."""
-from __future__ import annotations
-
 from contextlib import contextmanager
 from datetime import date, datetime
 from typing import Generator, Optional
