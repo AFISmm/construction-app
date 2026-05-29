@@ -129,44 +129,8 @@ def _login_page() -> None:
     step = st.session_state.get("_auth_step", "login")
 
     with form_col:
-        if step == "register":
-            st.subheader(t("auth.register_title"))
-            with st.form("register_form"):
-                email = st.text_input(t("auth.email_label"), placeholder=t("auth.email_placeholder"))
-                pwd1  = st.text_input(t("auth.password_label"), type="password")
-                pwd2  = st.text_input(t("auth.confirm_password_label"), type="password")
-                submitted = st.form_submit_button(t("auth.register_button"), use_container_width=True)
-            if submitted:
-                if not email or "@" not in email:
-                    st.error(t("error.invalid_email"))
-                elif len(pwd1) < 6:
-                    st.error(t("auth.password_too_short"))
-                elif pwd1 != pwd2:
-                    st.error(t("auth.password_mismatch"))
-                else:
-                    from db import User, get_session as _gs
-                    with _gs() as _s:
-                        existing = _s.query(User).filter_by(email=email.strip().lower()).first()
-                        if existing:
-                            st.error(t("auth.email_already_registered"))
-                        else:
-                            u = User(email=email.strip().lower())
-                            _s.add(u)
-                            _s.flush()
-                            uid = u.id
-                            set_password(uid, pwd1)
-                            st.session_state["user_id"] = uid
-                            st.session_state["user_email"] = email.strip().lower()
-                    if "user_id" in st.session_state:
-                        token = create_persistent_session(st.session_state["user_id"])
-                        st.query_params["s"] = token
-                        st.session_state.pop("_auth_step", None)
-                        st.rerun()
-            if st.button(t("auth.back_to_login"), use_container_width=True):
-                st.session_state.pop("_auth_step", None)
-                st.rerun()
-
-        elif step == "set_password":
+        if step == "set_password":
+            # First-time password setup
             email = st.session_state.get("_pending_email", "")
             st.info(f"**{email}** — {t('auth.set_password_title')}")
             with st.form("set_pwd_form"):
@@ -191,34 +155,67 @@ def _login_page() -> None:
                         st.session_state.pop("_auth_step", None)
                         st.session_state.pop("_pending_email", None)
                         st.rerun()
-
         else:
-            # Login form
-            with st.form("login_form"):
-                email    = st.text_input(t("auth.email_label"), placeholder=t("auth.email_placeholder"))
-                password = st.text_input(t("auth.password_label"), type="password",
-                                         placeholder=t("auth.password_placeholder"))
-                submitted = st.form_submit_button(t("auth.login_button"), use_container_width=True)
-            if submitted:
-                if not email or "@" not in email:
-                    st.error(t("error.invalid_email"))
-                elif not password:
-                    st.error(t("auth.password_too_short"))
-                else:
-                    result = login_with_password(email, password)
-                    if result == "ok":
-                        token = create_persistent_session(st.session_state["user_id"])
-                        st.query_params["s"] = token
-                        st.rerun()
-                    elif result == "no_password":
-                        st.session_state["_pending_email"] = email.strip().lower()
-                        st.session_state["_auth_step"] = "set_password"
-                        st.rerun()
+            # Tab selector: Iniciar sesión | Registrarse
+            tab_login, tab_register = st.tabs([t("auth.login_button"), t("auth.register_title")])
+
+            with tab_login:
+                with st.form("login_form"):
+                    email    = st.text_input(t("auth.email_label"), placeholder=t("auth.email_placeholder"))
+                    password = st.text_input(t("auth.password_label"), type="password",
+                                             placeholder=t("auth.password_placeholder"))
+                    submitted = st.form_submit_button(t("auth.login_button"), use_container_width=True)
+                if submitted:
+                    if not email or "@" not in email:
+                        st.error(t("error.invalid_email"))
+                    elif not password:
+                        st.error(t("auth.password_too_short"))
                     else:
-                        st.error(t("auth.invalid_credentials"))
-            if st.button(t("auth.register_link"), use_container_width=True):
-                st.session_state["_auth_step"] = "register"
-                st.rerun()
+                        result = login_with_password(email, password)
+                        if result == "ok":
+                            token = create_persistent_session(st.session_state["user_id"])
+                            st.query_params["s"] = token
+                            st.rerun()
+                        elif result == "no_password":
+                            st.session_state["_pending_email"] = email.strip().lower()
+                            st.session_state["_auth_step"] = "set_password"
+                            st.rerun()
+                        else:
+                            st.error(t("auth.invalid_credentials"))
+
+            with tab_register:
+                with st.form("register_form"):
+                    reg_email = st.text_input(t("auth.email_label"), placeholder=t("auth.email_placeholder"),
+                                              key="reg_email")
+                    reg_pwd1  = st.text_input(t("auth.password_label"), type="password", key="reg_pwd1")
+                    reg_pwd2  = st.text_input(t("auth.confirm_password_label"), type="password", key="reg_pwd2")
+                    reg_submitted = st.form_submit_button(t("auth.register_button"), use_container_width=True)
+                if reg_submitted:
+                    if not reg_email or "@" not in reg_email:
+                        st.error(t("error.invalid_email"))
+                    elif len(reg_pwd1) < 6:
+                        st.error(t("auth.password_too_short"))
+                    elif reg_pwd1 != reg_pwd2:
+                        st.error(t("auth.password_mismatch"))
+                    else:
+                        from db import User, get_session as _gs
+                        uid_new = None
+                        with _gs() as _s:
+                            existing = _s.query(User).filter_by(email=reg_email.strip().lower()).first()
+                            if existing:
+                                st.error(t("auth.email_already_registered"))
+                            else:
+                                u = User(email=reg_email.strip().lower())
+                                _s.add(u)
+                                _s.flush()
+                                uid_new = u.id
+                                set_password(uid_new, reg_pwd1)
+                                st.session_state["user_id"] = uid_new
+                                st.session_state["user_email"] = reg_email.strip().lower()
+                        if uid_new:
+                            token = create_persistent_session(uid_new)
+                            st.query_params["s"] = token
+                            st.rerun()
 
 
 def main() -> None:
