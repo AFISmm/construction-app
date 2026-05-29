@@ -73,15 +73,29 @@ def _sidebar(user: dict) -> None:
 
 
 def _login_page() -> None:
-    _, col_es, col_en = st.columns([6, 1, 1])
+    # Hide sidebar on login page
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] { display: none; }
+            [data-testid="collapsedControl"] { display: none; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Language flags — top right
     current_lang = st.session_state.get("lang", "es")
-    if col_es.button("🇪🇸", use_container_width=True,
-                     type="primary" if current_lang == "es" else "secondary"):
-        st.session_state["lang"] = "es"
-        st.rerun()
-    if col_en.button("🇺🇸", use_container_width=True,
-                     type="primary" if current_lang == "en" else "secondary"):
-        st.session_state["lang"] = "en"
+    _, col_flags = st.columns([7, 3])
+    with col_flags:
+        lang_choice = st.radio(
+            "",
+            options=["es", "en"],
+            format_func=lambda x: "🇪🇸 Español" if x == "es" else "🇺🇸 English",
+            index=0 if current_lang == "es" else 1,
+            horizontal=True,
+            label_visibility="collapsed",
+            key="_login_lang",
+        )
+    if lang_choice != current_lang:
+        st.session_state["lang"] = lang_choice
         st.rerun()
 
     st.title(t("auth.page_title"))
