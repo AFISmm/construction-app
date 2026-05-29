@@ -63,6 +63,9 @@ _HIDE_CHROME = """<style>
         pointer-events:none!important; caret-color:transparent!important; }
     [data-testid="stSidebarContent"] [data-baseweb="select"] [role="combobox"] {
         cursor:pointer!important; }
+    /* Smooth fade-in on every render to hide flash transitions */
+    .stApp { animation: _pg_fadein 0.25s ease-in !important; }
+    @keyframes _pg_fadein { from { opacity:0; } to { opacity:1; } }
 </style>"""
 
 
@@ -115,11 +118,6 @@ def _sidebar(user: dict) -> None:
 
 
 def _login_page() -> None:
-    # If just logged in, show blank while rerunning — prevents flash
-    if st.session_state.get("_just_logged_in"):
-        st.session_state.pop("_just_logged_in", None)
-        st.rerun()
-
     # Color palette from diGenius.ai logo
     # Black background | Orange: #e05a20 | Blue accent: #4fc3f7 | White: #fff
     st.markdown("""
@@ -282,7 +280,6 @@ def _login_page() -> None:
                         if result == "ok":
                             token = create_persistent_session(st.session_state["user_id"])
                             st.query_params["s"] = token
-                            st.session_state["_just_logged_in"] = True
                             st.rerun()
                         elif result == "no_password":
                             st.session_state["_pending_email"] = email.strip().lower()
