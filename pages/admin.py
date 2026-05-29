@@ -151,16 +151,14 @@ for u in visible_users:
             except Exception:
                 current_managed = None
 
-            selected_managed = None
+            selected_managed = []
             if other_users:
-                all_managed = st.checkbox("Todos", value=current_managed is None,
-                                          key=f"am_{u['id']}")
-                if not all_managed:
-                    selected_managed = []
-                    for ou in other_users:
-                        checked_m = current_managed is not None and ou["id"] in current_managed
-                        if st.checkbox(ou["email"], value=checked_m, key=f"mu_{u['id']}_{ou['id']}"):
-                            selected_managed.append(ou["id"])
+                for ou in other_users:
+                    checked_m = current_managed is None or (current_managed is not None and ou["id"] in current_managed)
+                    if st.checkbox(ou["email"], value=checked_m, key=f"mu_{u['id']}_{ou['id']}"):
+                        selected_managed.append(ou["id"])
+                if len(selected_managed) == len(other_users):
+                    selected_managed = None  # all checked = no restriction
             else:
                 st.caption("No hay otros usuarios registrados.")
 
