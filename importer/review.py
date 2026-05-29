@@ -291,6 +291,16 @@ def _apply_overrides(overrides: dict[int, Optional[str]]) -> None:
                 row.status = "overridden"
 
 
+def _safe_amount(value) -> float:
+    """Convert import amount to float, returning 0 for None/NaN."""
+    import math
+    try:
+        f = float(value)
+        return 0.0 if math.isnan(f) or math.isinf(f) else f
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _commit_rows(project_id: int, job_id: int) -> int:
     import streamlit as _st
     merge_mode = _st.session_state.get("_import_mode", "new") == "merge"
@@ -303,13 +313,15 @@ def _commit_rows(project_id: int, job_id: int) -> int:
                 row.status = "skipped"
                 continue
 
+            amount = _safe_amount(row.original_amount)
+
             existing = session.query(BudgetLine).filter_by(
                 project_id=project_id, category_code=effective_code
             ).first()
 
             if existing:
-                if merge_mode and row.original_amount:
-                    existing.budgeted_amount = float(existing.budgeted_amount) + float(row.original_amount or 0)
+                if merge_mode and amount > 0:
+                    existing.budgeted_amount = float(existing.budgeted_amount) + amount
                     row.status = "confirmed"
                     committed += 1
                 else:
@@ -319,7 +331,7 @@ def _commit_rows(project_id: int, job_id: int) -> int:
             session.add(BudgetLine(
                 project_id=project_id,
                 category_code=effective_code,
-                budgeted_amount=row.original_amount or 0,
+                budgeted_amount=amount,
                 description=row.original_description,
             ))
             row.status = "confirmed"
