@@ -183,13 +183,19 @@ for u in visible_users:
         # ── Delete user (solo super admin) ────────────────────────────────
         if _is_super:
             st.markdown("**🗑 Eliminar usuario**")
+            from db import Project
+            with get_session() as _s:
+                user_projects = _s.query(Project).filter_by(user_id=u["id"]).count()
             confirm_key = f"_confirm_del_{u['id']}"
             if not st.session_state.get(confirm_key, False):
                 if st.button("Eliminar usuario", key=f"del_{u['id']}"):
                     st.session_state[confirm_key] = True
                     st.rerun()
             else:
-                st.warning(f"¿Confirmas eliminar **{u['email']}**? No se puede deshacer.")
+                msg = f"¿Confirmas eliminar **{u['email']}**? No se puede deshacer."
+                if user_projects > 0:
+                    st.error(f"⚠ Este usuario tiene **{user_projects} proyecto(s)** asociado(s). Eliminar el usuario borrará también esos proyectos y todos sus datos.")
+                st.warning(msg)
                 col_yes, col_no = st.columns(2)
                 if col_yes.button("Sí, eliminar", key=f"yes_{u['id']}", type="primary"):
                     with get_session() as s:
