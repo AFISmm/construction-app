@@ -17,7 +17,10 @@ if not summary:
     st.error(t("error.not_found"))
     st.stop()
 
-st.title(f"{summary.name}  `{t(f'project.type_badge_{summary.project_type}')}`")
+type_label = t(f"project.type_badge_{summary.project_type}")
+st.title(summary.name)
+st.markdown(f'<span style="color:#22c55e;font-size:0.78rem;font-weight:500;">{type_label}</span>',
+            unsafe_allow_html=True)
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric(t("project.total_budget"), f"{summary.currency} {summary.total_budgeted:,.0f}")

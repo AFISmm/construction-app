@@ -54,14 +54,31 @@ _HIDE_CHROME = """
         [data-testid="stDecoration"]     { display:none!important; }
         [data-testid="stStatusWidget"]   { display:none!important; }
         footer                           { display:none!important; }
+        /* Compact sidebar top */
+        [data-testid="stSidebarContent"] { padding-top: 0.5rem !important; }
+        section[data-testid="stSidebar"] > div:first-child { padding-top: 0 !important; }
+        /* ES/EN buttons — small, consistent everywhere */
+        button[data-testid="baseButton-secondary"][kind="secondary"]:has(> p:contains("ES")),
+        button[data-testid="baseButton-primary"][kind="primary"]:has(> p:contains("ES")),
+        button[data-testid="baseButton-secondary"][kind="secondary"]:has(> p:contains("EN")),
+        button[data-testid="baseButton-primary"][kind="primary"]:has(> p:contains("EN")) {
+            padding: 2px 8px !important;
+            font-size: 0.7rem !important;
+            min-height: 0 !important;
+            height: 1.6rem !important;
+            line-height: 1 !important;
+            background-color: #1a1a2e !important;
+            color: #8ec5d6 !important;
+            border: 1px solid #4fc3f7 !important;
+        }
     </style>"""
 
 
 def _lang_buttons() -> None:
-    """Render ES / EN buttons at top-right of content area."""
+    """Render compact ES / EN buttons at top-right of content area."""
     st.markdown(_HIDE_CHROME, unsafe_allow_html=True)
     current = st.session_state.get("lang", "es")
-    _, c1, c2 = st.columns([8, 0.6, 0.6])
+    _, c1, c2 = st.columns([9, 0.5, 0.5])
     if c1.button("ES", key="_lang_es",
                  type="primary" if current == "es" else "secondary",
                  use_container_width=True):
@@ -167,12 +184,6 @@ def _login_page() -> None:
             .stButton > button { border-radius:4px !important; font-size:0.8rem !important; }
         </style>
     """, unsafe_allow_html=True)
-
-    # Handle ?lang= param (don't delete — just apply if changed)
-    lang_param = st.query_params.get("lang")
-    if lang_param in ("es", "en") and lang_param != st.session_state.get("lang"):
-        set_language(lang_param)
-        st.rerun()
 
     _lang_buttons()
 
