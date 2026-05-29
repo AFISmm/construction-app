@@ -11,7 +11,9 @@ from auth import (
 )
 from db import init_db, seed_categories
 from i18n import language_toggle, set_language, t
-from permissions import PAGE_FILES, VIEWER_DEFAULT_PAGES, get_allowed_pages, get_visible_projects, is_admin, is_viewer, save_permission
+from permissions import (PAGE_FILES, VIEWER_DEFAULT_PAGES, get_allowed_pages,
+                         get_pending_count, get_visible_projects,
+                         is_admin, is_pending, is_viewer, save_permission)
 from projects import project_selector_sidebar
 
 st.set_page_config(page_title="Control de Presupuesto", layout="wide", initial_sidebar_state="expanded")
@@ -95,7 +97,10 @@ def _sidebar(user: dict) -> None:
         if "rooms"      in allowed: st.page_link("pages/rooms.py",        label=t("nav.rooms"))
         if "account"    in allowed: st.page_link("pages/account.py",      label=t("nav.account"))
         # Admin only
-        if "admin"      in allowed: st.page_link("pages/admin.py",        label=t("nav.admin"))
+        if "admin" in allowed:
+            pending = get_pending_count()
+            admin_label = f"🔔 {t('nav.admin')} ({pending})" if pending > 0 else t("nav.admin")
+            st.page_link("pages/admin.py", label=admin_label)
         st.divider()
         if st.button(t("nav.logout"), use_container_width=True):
             token = st.query_params.get("s")
@@ -291,14 +296,10 @@ def _login_page() -> None:
                             st.error(t("auth.email_already_registered"))
                         elif uid_new:
                             set_password(uid_new, reg_pwd1)
-                            # New users are viewers by default
-                            save_permission(uid_new, "viewer", VIEWER_DEFAULT_PAGES, None)
-                            st.session_state["user_id"] = uid_new
-                            st.session_state["user_email"] = reg_email.strip().lower()
-                            st.session_state["is_viewer"] = True
-                            token = create_persistent_session(uid_new)
-                            st.query_params["s"] = token
-                            st.rerun()
+                            # New users start as "pending" — need super admin approval
+                            save_permission(uid_new, "pending", [], None)
+                            st.success("✅ Registro exitoso. Tu cuenta está pendiente de aprobación por el administrador.")
+                            st.info("Recibirás acceso una vez que el administrador apruebe tu solicitud.")
 
 
 def main() -> None:
@@ -313,6 +314,18 @@ def main() -> None:
     if not user:
         _login_page()
         return
+    # Block pending users
+    if is_pending(user["id"]):
+        st.markdown(_HIDE_CHROME, unsafe_allow_html=True)
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        _, col, _ = st.columns([1, 2, 1])
+        with col:
+            st.warning("⏳ Tu cuenta está pendiente de aprobación.")
+            st.markdown("El administrador revisará tu solicitud y te dará acceso pronto.")
+            if st.button("Cerrar sesión"):
+                logout()
+        st.stop()
+
     # Cache viewer status in session state
     if "is_viewer" not in st.session_state:
         st.session_state["is_viewer"] = is_viewer(user["id"])

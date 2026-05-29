@@ -7,7 +7,8 @@ from auth import require_auth, set_password
 from db import User, UserPermission, get_session
 from i18n import t
 from permissions import (
-    get_all_users_with_permissions, is_admin, is_super_admin, save_permission,
+    VIEWER_DEFAULT_PAGES, get_all_users_with_permissions, get_pending_users,
+    is_admin, is_super_admin, save_permission,
 )
 from projects import get_user_projects
 
@@ -49,6 +50,32 @@ else:
 
 st.title(t("nav.admin"))
 st.divider()
+
+# ── Solicitudes de aprobación ─────────────────────────────────────────────────
+if _is_super:
+    pending_users = get_pending_users()
+    if pending_users:
+        st.subheader(f"🔔 Solicitudes pendientes ({len(pending_users)})")
+        for pu in pending_users:
+            with st.expander(f"📨 {pu['email']}", expanded=True):
+                with st.form(f"approve_{pu['id']}"):
+                    st.markdown("**Páginas visibles al aprobar:**")
+                    sel_pages = []
+                    cols = st.columns(2)
+                    for i, (key, lbl) in enumerate(PAGE_LABELS.items()):
+                        if cols[i % 2].checkbox(lbl, value=True, key=f"ap_{pu['id']}_{key}"):
+                            sel_pages.append(key)
+                    col_ok, col_no = st.columns(2)
+                    if col_ok.form_submit_button("✅ Aprobar", use_container_width=True):
+                        save_permission(pu["id"], "viewer",
+                                        sel_pages or VIEWER_DEFAULT_PAGES, None)
+                        st.success(f"{pu['email']} aprobado.")
+                        st.rerun()
+                    if col_no.form_submit_button("❌ Rechazar", use_container_width=True):
+                        save_permission(pu["id"], "rejected", [], None)
+                        st.warning(f"{pu['email']} rechazado.")
+                        st.rerun()
+        st.divider()
 
 # ── Crear usuario (solo super admin) ─────────────────────────────────────────
 if _is_super:

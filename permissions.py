@@ -25,6 +25,29 @@ PAGE_FILES = {
 }
 
 
+def is_pending(user_id: int) -> bool:
+    """True if user is registered but not yet approved by super admin."""
+    perm = get_permission(user_id)
+    return perm is not None and perm.role in ("pending", "rejected")
+
+
+def get_pending_users() -> list[dict]:
+    """Return all users waiting for approval."""
+    with get_session() as session:
+        perms = session.query(UserPermission).filter_by(role="pending").all()
+        result = []
+        for p in perms:
+            u = session.get(User, p.user_id)
+            if u:
+                result.append({"id": u.id, "email": u.email})
+        return result
+
+
+def get_pending_count() -> int:
+    with get_session() as session:
+        return session.query(UserPermission).filter_by(role="pending").count()
+
+
 def get_permission(user_id: int) -> Optional[UserPermission]:
     with get_session() as session:
         return session.query(UserPermission).filter_by(user_id=user_id).first()
