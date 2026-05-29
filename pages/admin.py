@@ -139,9 +139,8 @@ for u in visible_users:
                     if st.checkbox(pname, value=checked_p, key=f"proj_{u['id']}_{pid}"):
                         selected_project_ids.append(pid)
 
-            # Managed users — only shown if role = admin
-            st.markdown("**Correos visibles en Configurar perfiles** *(si el rol es Admin)*:")
-            st.caption("Define qué usuarios puede ver y gestionar este administrador.")
+            # Managed users
+            st.markdown("**Correos visibles**")
             other_users = [x for x in all_users
                            if x["id"] != u["id"] and not is_super_admin(x["id"])]
             try:
@@ -152,16 +151,18 @@ for u in visible_users:
             except Exception:
                 current_managed = None
 
-            all_managed = st.checkbox("Todos los usuarios",
-                                      value=current_managed is None,
-                                      key=f"am_{u['id']}")
             selected_managed = None
-            if not all_managed:
-                selected_managed = []
-                for ou in other_users:
-                    checked_m = current_managed is not None and ou["id"] in current_managed
-                    if st.checkbox(ou["email"], value=checked_m, key=f"mu_{u['id']}_{ou['id']}"):
-                        selected_managed.append(ou["id"])
+            if other_users:
+                all_managed = st.checkbox("Todos", value=current_managed is None,
+                                          key=f"am_{u['id']}")
+                if not all_managed:
+                    selected_managed = []
+                    for ou in other_users:
+                        checked_m = current_managed is not None and ou["id"] in current_managed
+                        if st.checkbox(ou["email"], value=checked_m, key=f"mu_{u['id']}_{ou['id']}"):
+                            selected_managed.append(ou["id"])
+            else:
+                st.caption("No hay otros usuarios registrados.")
 
             if st.form_submit_button("💾 Guardar permisos", use_container_width=True):
                 pages_to_save = None if role == "admin" else (selected_pages or [k for k in PAGE_LABELS if k != "admin"])
