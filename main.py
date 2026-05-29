@@ -59,25 +59,39 @@ _HIDE_CHROME = """
 
 
 def _flag_links() -> None:
-    """Hide Streamlit chrome."""
+    """Inject flag images fixed top-right via parent DOM + hide chrome."""
+    current_lang = st.session_state.get("lang", "es")
+    token = st.query_params.get("s", "")
+    s_param = f"&s={token}" if token else ""
+    es_op = "1.0" if current_lang == "es" else "0.35"
+    en_op = "1.0" if current_lang == "en" else "0.35"
     st.markdown(_HIDE_CHROME, unsafe_allow_html=True)
+    _components.html(f"""
+    <script>
+    (function() {{
+        var p = window.parent.document;
+        var el = p.getElementById('lang-flags');
+        if (!el) {{
+            el = p.createElement('div');
+            el.id = 'lang-flags';
+            el.style.cssText = 'position:fixed;top:12px;right:16px;z-index:99999;display:flex;gap:8px;align-items:center;';
+            p.body.appendChild(el);
+        }}
+        el.innerHTML = `
+            <a href="?lang=es{s_param}" target="_parent" style="text-decoration:none;opacity:{es_op};">
+                <img src="https://flagcdn.com/w40/es.png" width="30" style="border-radius:3px;display:block;">
+            </a>
+            <a href="?lang=en{s_param}" target="_parent" style="text-decoration:none;opacity:{en_op};">
+                <img src="https://flagcdn.com/w40/us.png" width="30" style="border-radius:3px;display:block;">
+            </a>`;
+    }})();
+    </script>
+    """, height=0, scrolling=False)
 
 
 def _sidebar(user: dict) -> None:
     allowed = get_allowed_pages(user["id"])
     with st.sidebar:
-        # Language toggle — flag buttons at the top
-        current_lang = st.session_state.get("lang", "es")
-        col_es, col_en = st.columns(2)
-        if col_es.button("🇪🇸 ES", type="primary" if current_lang == "es" else "secondary",
-                         use_container_width=True, key="lang_es"):
-            set_language("es")
-            st.rerun()
-        if col_en.button("🇺🇸 EN", type="primary" if current_lang == "en" else "secondary",
-                         use_container_width=True, key="lang_en"):
-            set_language("en")
-            st.rerun()
-        st.divider()
         # Project selector (read-only display + dropdown to switch)
         project_selector_sidebar(user["id"])
         if st.button(t("nav.new_project"), use_container_width=True):
@@ -117,29 +131,13 @@ def _login_page() -> None:
         </style>
     """, unsafe_allow_html=True)
 
-    # Handle ?lang= param set by flag links
+    # Handle ?lang= param (don't delete — just apply if changed)
     lang_param = st.query_params.get("lang")
-    if lang_param in ("es", "en"):
+    if lang_param in ("es", "en") and lang_param != st.session_state.get("lang"):
         set_language(lang_param)
-        try:
-            del st.query_params["lang"]
-        except Exception:
-            pass
         st.rerun()
 
-    current_lang = st.session_state.get("lang", "es")
-    _, c_es, c_en = st.columns([6, 1, 1])
-    if c_es.button("🇪🇸", key="login_es",
-                   type="primary" if current_lang == "es" else "secondary",
-                   use_container_width=True):
-        set_language("es")
-        st.rerun()
-    if c_en.button("🇺🇸", key="login_en",
-                   type="primary" if current_lang == "en" else "secondary",
-                   use_container_width=True):
-        set_language("en")
-        st.rerun()
-
+    _flag_links()
     st.title(t("auth.page_title"))
     _, form_col, _ = st.columns([1, 2, 1])
 
@@ -240,14 +238,10 @@ def _login_page() -> None:
 
 def main() -> None:
     _bootstrap()
-    # Handle language param set by flag links
+    # Handle language param set by flag links (don't delete — just apply if changed)
     lang_param = st.query_params.get("lang")
-    if lang_param in ("es", "en"):
+    if lang_param in ("es", "en") and lang_param != st.session_state.get("lang"):
         set_language(lang_param)
-        try:
-            del st.query_params["lang"]
-        except Exception:
-            pass
         st.rerun()
     _restore_session()
     user = get_current_user()
