@@ -46,24 +46,22 @@ def export_xlsx(project_id: int) -> bytes:
 
 
 def chart_data(project_id: int) -> pd.DataFrame:
-    """Roll up budget/spent to level-1 categories for the bar chart."""
+    """Roll up budget/spent to level-1 categories. Returns long-format df for grouped bars."""
     totals = get_category_totals(project_id)
     level1: dict[str, dict] = {}
     for ct in totals:
-        top_code = ct.code.split(".")[0]
-        label = t(f"cat.{top_code}")
-        if label == f"cat.{top_code}":
-            label = top_code
-        key = f"{top_code} — {label}"
-        if key not in level1:
-            level1[key] = {t("report.planned"): 0.0, t("report.actual"): 0.0}
-        level1[key][t("report.planned")] += ct.budgeted
-        level1[key][t("report.actual")]  += ct.spent
+        top_code = ct.code.split(".")[0]   # "01", "02", etc.
+        if top_code not in level1:
+            level1[top_code] = {t("report.planned"): 0.0, t("report.actual"): 0.0}
+        level1[top_code][t("report.planned")] += ct.budgeted
+        level1[top_code][t("report.actual")]  += ct.spent
 
     if not level1:
-        return pd.DataFrame(
-            columns=["Categoria", t("report.planned"), t("report.actual")]
-        ).set_index("Categoria")
+        return pd.DataFrame(columns=["Categoria", "Tipo", "Valor"])
 
-    rows = [{"Categoria": k, **v} for k, v in sorted(level1.items())]
-    return pd.DataFrame(rows).set_index("Categoria")
+    rows = []
+    for code in sorted(level1.keys()):
+        vals = level1[code]
+        rows.append({"Categoria": code, "Tipo": t("report.planned"), "Valor": vals[t("report.planned")]})
+        rows.append({"Categoria": code, "Tipo": t("report.actual"),  "Valor": vals[t("report.actual")]})
+    return pd.DataFrame(rows)

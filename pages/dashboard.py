@@ -1,4 +1,5 @@
 """Project Dashboard page."""
+import altair as alt
 import streamlit as st
 from auth import require_auth
 from i18n import t
@@ -30,7 +31,23 @@ col4.metric(t("project.pct_executed"), f"{summary.pct_executed}%")
 
 st.subheader(t("report.chart_title"))
 df = chart_data(project_id)
-if not df.empty:
-    st.bar_chart(df)
+if not df.empty and "Tipo" in df.columns:
+    chart = (
+        alt.Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X("Categoria:N", title=t("report.category_col"), axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("Valor:Q", title=summary.currency if summary else ""),
+            color=alt.Color(
+                "Tipo:N",
+                scale=alt.Scale(range=["#4fc3f7", "#e05a20"]),
+                legend=alt.Legend(title=""),
+            ),
+            xOffset="Tipo:N",
+            tooltip=["Categoria:N", "Tipo:N", alt.Tooltip("Valor:Q", format=",.0f")],
+        )
+        .properties(height=300)
+    )
+    st.altair_chart(chart, use_container_width=True)
 else:
     st.caption(t("common.no_data"))

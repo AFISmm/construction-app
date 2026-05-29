@@ -1,4 +1,5 @@
 """Progress View — charts, variance table, and export."""
+import altair as alt
 import streamlit as st
 from auth import require_auth
 from i18n import t
@@ -23,8 +24,24 @@ if summary:
 
 st.subheader(t("report.chart_title"))
 df_chart = chart_data(project_id)
-if not df_chart.empty:
-    st.bar_chart(df_chart)
+if not df_chart.empty and "Tipo" in df_chart.columns:
+    chart = (
+        alt.Chart(df_chart)
+        .mark_bar()
+        .encode(
+            x=alt.X("Categoria:N", title=t("report.category_col"), axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("Valor:Q", title=summary.currency if summary else ""),
+            color=alt.Color(
+                "Tipo:N",
+                scale=alt.Scale(range=["#4fc3f7", "#e05a20"]),
+                legend=alt.Legend(title=""),
+            ),
+            xOffset="Tipo:N",
+            tooltip=["Categoria:N", "Tipo:N", alt.Tooltip("Valor:Q", format=",.0f")],
+        )
+        .properties(height=300)
+    )
+    st.altair_chart(chart, use_container_width=True)
 
 st.subheader(t("report.variance"))
 currency = summary.currency if summary else ""
