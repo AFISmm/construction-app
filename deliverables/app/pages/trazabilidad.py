@@ -56,7 +56,7 @@ def _badge(status: str) -> str:
     return f'<span style="background:{color};color:#fff;padding:2px 8px;border-radius:10px;font-size:0.75rem;">{label}</span>'
 
 
-st.title("📋 " + ("Trazabilidad" if lang == "es" else "Traceability"))
+st.title("📋 " + ("Versiones de Presupuesto" if lang == "es" else "Budget Versions"))
 
 # ── Select or create budget ───────────────────────────────────────────────────
 budgets = get_budgets(project_id)
@@ -114,11 +114,11 @@ st.divider()
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 if lang == "es":
-    tab_labels = ["📄 Vigente", "🕐 Versiones", "🔍 Comparar", "📜 Auditoría"]
+    tab_labels = ["📄 Vigente", "🕐 Versiones", "🔍 Comparar"]
 else:
-    tab_labels = ["📄 Current", "🕐 Versions", "🔍 Compare", "📜 Audit log"]
+    tab_labels = ["📄 Current", "🕐 Versions", "🔍 Compare"]
 
-tab_vigente, tab_versions, tab_compare, tab_audit = st.tabs(tab_labels)
+tab_vigente, tab_versions, tab_compare = st.tabs(tab_labels)
 
 
 # ── TAB 1: Vigente ────────────────────────────────────────────────────────────
@@ -362,38 +362,3 @@ with tab_compare:
                 df_diff = pd.DataFrame(rows)
                 st.dataframe(df_diff, use_container_width=True, hide_index=True)
 
-
-# ── TAB 4: Auditoría ──────────────────────────────────────────────────────────
-with tab_audit:
-    audit = get_audit_log(selected_budget_id)
-    if not audit:
-        st.info("Sin registros de auditoría." if lang == "es" else "No audit records.")
-    else:
-        ACTION_LABELS = {
-            "create":          ("Creación"         if lang == "es" else "Creation"),
-            "version_created": ("Nueva versión"    if lang == "es" else "New version"),
-            "status_change":   ("Cambio de estado" if lang == "es" else "Status change"),
-            "restored":        ("Restauración"     if lang == "es" else "Restore"),
-            "edit_line":       ("Edición de línea" if lang == "es" else "Line edit"),
-        }
-        h_date   = "Fecha"    if lang == "es" else "Date"
-        h_user   = "Usuario"  if lang == "es" else "User"
-        h_action = "Acción"   if lang == "es" else "Action"
-        h_field  = "Campo"    if lang == "es" else "Field"
-        h_old    = "Anterior" if lang == "es" else "Before"
-        h_new    = "Nuevo"    if lang == "es" else "After"
-        h_notes  = "Notas"    if lang == "es" else "Notes"
-        rows = []
-        for entry in audit:
-            rows.append({
-                h_date:   str(entry.timestamp)[:16],
-                h_user:   get_user_email(entry.user_id),
-                h_action: ACTION_LABELS.get(entry.action, entry.action),
-                h_field:  entry.field_changed or "—",
-                h_old:    entry.old_value or "—",
-                h_new:    entry.new_value or "—",
-                h_notes:  entry.notes or "—",
-            })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-        st.caption("🔒 " + ("Registro inmutable — ningún registro puede eliminarse."
-                   if lang == "es" else "Immutable log — records cannot be deleted."))

@@ -151,6 +151,40 @@ t3.metric(t("project.balance"),       fmt_money(grand_balance),
           delta=fmt_money(grand_balance),
           delta_color="normal" if grand_balance >= 0 else "inverse")
 
+# ── Export expenses ───────────────────────────────────────────────────────────
+if not _read_only:
+    st.divider()
+    with st.expander("📤 Exportar gastos" if _lang == "es" else "📤 Export expenses"):
+        import pandas as _pd
+        import io as _io
+        all_exps = []
+        for line in lines:
+            for exp in get_expenses(project_id, line.id):
+                all_exps.append({
+                    "Categoria" if _lang == "es" else "Category": _translated_cat(line.category_code),
+                    "Proveedor" if _lang == "es" else "Vendor": exp.vendor or "—",
+                    "Descripcion" if _lang == "es" else "Description": exp.description or "—",
+                    "Monto" if _lang == "es" else "Amount": float(exp.amount),
+                    "Fecha" if _lang == "es" else "Date": str(exp.expense_date),
+                })
+        if not all_exps:
+            st.info(t("expense.no_expenses"))
+        else:
+            df_exp = _pd.DataFrame(all_exps)
+            ec1, ec2 = st.columns(2)
+            ec1.download_button(
+                "⬇️ CSV", df_exp.to_csv(index=False).encode("utf-8-sig"),
+                file_name="gastos.csv", mime="text/csv",
+            )
+            buf_xl = _io.BytesIO()
+            with _pd.ExcelWriter(buf_xl, engine="openpyxl") as writer:
+                df_exp.to_excel(writer, index=False, sheet_name="Gastos")
+            ec2.download_button(
+                "⬇️ Excel", buf_xl.getvalue(),
+                file_name="gastos.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+
 # ── File attachment — import expenses from CSV/Excel ──────────────────────────
 if not _read_only:
     st.divider()

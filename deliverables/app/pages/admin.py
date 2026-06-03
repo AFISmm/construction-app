@@ -23,17 +23,14 @@ _is_super = is_super_admin(user["id"])
 _lang = "en" if t("nav.dashboard") == "Dashboard" else "es"
 
 PAGE_LABELS = {
-    "dashboard":    t("nav.dashboard"),
-    "import":       t("nav.import"),
-    "projects":     t("nav.projects"),
-    "progress":      t("nav.progress"),
-    "presupuesto":   t("nav.presupuesto"),
-    "expenses":     t("nav.expenses"),
-    "rooms":        t("nav.rooms"),
-    "account":      t("nav.account"),
+    "dashboard":         t("nav.dashboard"),
+    "expenses":          t("nav.expenses"),
+    "presupuesto":       t("nav.presupuesto"),
     "trazabilidad":      t("nav.trazabilidad"),
     "trazabilidad_edit": t("trazabilidad.can_edit"),
     "timeline":          t("nav.timeline"),
+    "proveedores":       t("nav.proveedores"),
+    "account":           t("nav.account"),
     "admin":             t("nav.admin"),
 }
 

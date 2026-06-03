@@ -9,20 +9,18 @@ import streamlit as st
 from db import Project, User, UserPermission, get_session
 
 ALL_PAGES = [
-    "dashboard", "expenses", "import",
-    "progress", "presupuesto", "rooms", "account", "projects", "trazabilidad", "timeline",
+    "dashboard", "expenses", "presupuesto", "trazabilidad", "timeline", "proveedores", "account",
 ]
 
 PAGE_FILES = {
-    "dashboard":  "pages/dashboard.py",
-    "expenses":   "pages/expenses.py",
-    "import":     "pages/import_page.py",
-    "progress":   "pages/progress.py",
-    "rooms":      "pages/rooms.py",
-    "account":    "pages/account.py",
-    "projects":   "pages/project_list.py",
-    "admin":      "pages/admin.py",
-    "timeline":   "pages/timeline.py",
+    "dashboard":   "pages/dashboard.py",
+    "expenses":    "pages/expenses.py",
+    "presupuesto": "pages/presupuesto.py",
+    "trazabilidad": "pages/trazabilidad.py",
+    "timeline":    "pages/timeline.py",
+    "proveedores": "pages/proveedores.py",
+    "account":     "pages/account.py",
+    "admin":       "pages/admin.py",
 }
 
 
@@ -72,7 +70,7 @@ def is_super_admin(user_id: int) -> bool:
     return False
 
 
-VIEWER_DEFAULT_PAGES = ["dashboard", "projects", "progress", "presupuesto", "expenses", "rooms", "account", "trazabilidad", "timeline"]
+VIEWER_DEFAULT_PAGES = ["dashboard", "expenses", "presupuesto", "trazabilidad", "timeline", "account"]
 
 
 def is_viewer(user_id: int) -> bool:
