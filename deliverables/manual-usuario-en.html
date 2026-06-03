@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>User Manual — ConstructionApp</title>
+<style>
+  @page { margin: 2cm; }
+  body { font-family: Arial, sans-serif; font-size: 11pt; color: #222; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+  h1 { color: #1a5276; border-bottom: 2px solid #1a5276; padding-bottom: 8px; font-size: 20pt; }
+  h2 { color: #2471a3; margin-top: 24px; font-size: 14pt; }
+  h3 { color: #444; font-size: 12pt; margin-top: 14px; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 20px 0; }
+  blockquote { background: #f8f9fa; border-left: 4px solid #2471a3; margin: 10px 0; padding: 8px 14px; border-radius: 4px; font-size: 10.5pt; }
+  code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 10pt; }
+  strong { color: #1a252f; }
+  ol, ul { padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  @media print { body { max-width: 100%; padding: 0; } }
+</style>
+</head>
+<body>
+<h1>ConstructionApp — User Manual</h1>
+<h2>What is ConstructionApp?</h2>
+<p>ConstructionApp is a web application for tracking the budget and expenses of construction projects. It lets you create projects, set up budget lines by category, record expenses, and monitor execution progress — all from a browser, with no installation required.</p>
+<hr />
+<h2>How to Log In</h2>
+<p>ConstructionApp uses a one-time verification code (OTP) instead of a password. No password to remember.</p>
+<ol>
+<li>Open the application in your browser. You will see the <strong>Project Budget Control</strong> screen.</li>
+<li>Enter your email address in the <strong>Email address</strong> field.</li>
+<li>Click <strong>Send code</strong>.</li>
+<li>Check your inbox for an email with a 6-digit code. The code is valid for a few minutes.</li>
+<li>Type the code in the <strong>Verification code</strong> field.</li>
+<li>Click <strong>Verify</strong>.</li>
+<li>If the code is correct, you are taken directly to your project list.</li>
+</ol>
+<blockquote>
+<p>⚠️ If you enter the wrong code five times, you will be locked out. Click <strong>Resend code</strong> to request a new one.</p>
+<p>💡 If the email does not arrive within two minutes, check your spam folder, then click <strong>Resend code</strong>.</p>
+</blockquote>
+<hr />
+<h2>Managing Projects</h2>
+<h3>View your projects</h3>
+<p>After logging in you land on <strong>My projects</strong>, which lists every project you have access to. Each card shows the project name, type, total budget, and percentage executed.</p>
+<h3>Create a project</h3>
+<ol>
+<li>Click <strong>+ New project</strong> — either the button at the top right of the project list or the link in the sidebar.</li>
+<li>Fill in <strong>Project name</strong> (required).</li>
+<li>Choose a <strong>Project type</strong>: <strong>Residential</strong> or <strong>Commercial</strong>.</li>
+<li>Optionally add a <strong>Description</strong>.</li>
+<li>Click <strong>Save</strong>.</li>
+</ol>
+<h3>Select a project</h3>
+<p>Click any project card. The project becomes the <strong>Active project</strong> shown in the sidebar, and all screens update to show its data.</p>
+<h3>Edit a project</h3>
+<ol>
+<li>Open the project dashboard.</li>
+<li>Click <strong>Edit</strong> next to the project name.</li>
+<li>Modify the fields and click <strong>Save</strong>, or click <strong>Cancel</strong> to discard changes.</li>
+</ol>
+<blockquote>
+<p>⚠️ Clicking <strong>Delete</strong> on a project removes all its data permanently. This action cannot be undone.</p>
+</blockquote>
+<hr />
+<h2>Budget</h2>
+<p>The <strong>Budget</strong> screen lets you plan how much to spend in each category before recording any expenses.</p>
+<h3>Add a budget line</h3>
+<ol>
+<li>Navigate to <strong>Budget</strong> in the sidebar.</li>
+<li>Click <strong>Add line</strong>.</li>
+<li>Select a <strong>Category</strong> from the dropdown (e.g., Structure, Electrical, Plumbing).</li>
+<li>Optionally select a <strong>Room</strong> if the line is specific to one area; otherwise leave it as <strong>Whole project</strong>.</li>
+<li>Enter a <strong>Description</strong> and the <strong>Budgeted amount</strong>.</li>
+<li>Click <strong>Save</strong>. The confirmation message <strong>Line saved</strong> appears.</li>
+</ol>
+<blockquote>
+<p>⚠️ When total expenses for a category exceed its budgeted amount, the warning <strong>This category exceeds budget</strong> appears in red.</p>
+</blockquote>
+<hr />
+<h2>Expenses</h2>
+<p>The <strong>Expenses</strong> screen is where you record every payment or cost charged against a budget line.</p>
+<h3>Record an expense</h3>
+<ol>
+<li>Navigate to <strong>Expenses</strong> in the sidebar.</li>
+<li>Select the <strong>Budget line</strong> you want to charge the expense to.</li>
+<li>Click <strong>Record expense</strong>.</li>
+<li>Fill in the form:</li>
+<li><strong>Vendor</strong> (optional) — who you paid.</li>
+<li><strong>Description</strong> — what the expense was for.</li>
+<li><strong>Amount</strong> (required) — must be greater than zero.</li>
+<li><strong>Date</strong> (required) — defaults to today.</li>
+<li><strong>Notes</strong> — any additional detail.</li>
+<li>Click <strong>Save</strong>. The message <strong>Expense recorded</strong> confirms the entry.</li>
+</ol>
+<blockquote>
+<p>💡 To delete a recorded expense, click the delete icon on its row in the expense table.</p>
+</blockquote>
+<hr />
+<h2>Reports and Progress</h2>
+<p>The <strong>Progress</strong> screen shows how budget and actual spending compare across all categories.</p>
+<h3>What you will see</h3>
+<ul>
+<li>A progress bar showing <strong>Total project execution</strong> as a percentage.</li>
+<li>A grouped bar chart: <strong>Budget vs. Actual by category</strong> — blue bars for budgeted, colored bars for actual.</li>
+<li>A variance table with columns <strong>Budgeted</strong>, <strong>Actual</strong>, <strong>Variance</strong>, and <strong>% Execution</strong>. Rows over budget appear in red; rows under budget appear in green.</li>
+</ul>
+<h3>Export a report</h3>
+<ul>
+<li>Click <strong>Export CSV</strong> to download a comma-separated file.</li>
+<li>Click <strong>Export Excel</strong> to download an .xlsx file.</li>
+</ul>
+<p>Both files use the column headers in the language currently selected in the sidebar.</p>
+<hr />
+<h2>Import a File</h2>
+<p>Use <strong>Import</strong> to load a budget you already have in a spreadsheet, so you do not have to enter each line manually.</p>
+<h3>Step 1 — Upload</h3>
+<ol>
+<li>Navigate to <strong>Import</strong> in the sidebar.</li>
+<li>Click <strong>Select file</strong> and choose your file, or drag and drop it onto the upload area.</li>
+<li>Accepted formats: .xlsx, .xls, .csv.</li>
+</ol>
+<h3>Step 2 — Review</h3>
+<ol>
+<li>The application parses the file and shows a <strong>Preview</strong> table with four columns: <strong>Original description</strong>, <strong>Assigned category</strong>, <strong>Confidence</strong>, and <strong>Override</strong>.</li>
+<li>Rows with a confidence score below 0.70 are highlighted in orange and require your attention.</li>
+<li>For each flagged row, open the <strong>Override</strong> dropdown and choose the correct category.</li>
+</ol>
+<blockquote>
+<p>⚠️ You cannot proceed while any flagged row remains unreviewed. The <strong>Confirm import</strong> button stays disabled until all flagged rows have an assigned category.</p>
+</blockquote>
+<h3>Step 3 — Confirm</h3>
+<ol>
+<li>Once all rows are reviewed, click <strong>Confirm import</strong>.</li>
+<li>The screen shows a success message with the number of rows imported.</li>
+</ol>
+<hr />
+<h2>Change Language</h2>
+<p>The language toggle is in the sidebar on every screen after login.</p>
+<ol>
+<li>Look for <strong>Language</strong> at the top of the sidebar.</li>
+<li>Click <strong>ES</strong> to switch to Spanish, or <strong>EN</strong> to switch to English.</li>
+<li>The entire interface updates instantly. Your language choice is kept for the rest of your session.</li>
+</ol>
+<hr />
+<h2>Log Out</h2>
+<ol>
+<li>In the sidebar, click <strong>Log out</strong> at the bottom.</li>
+<li>Your session closes and you return to the login screen.</li>
+</ol>
+<blockquote>
+<p>💡 You can also log out from <strong>My account</strong> in the sidebar navigation.</p>
+</blockquote>
+<hr />
+<h2>How to Convert This Manual to PDF</h2>
+<h3>Option A — Google Docs</h3>
+<ol>
+<li>Open <a href="https://docs.google.com">docs.google.com</a> and sign in.</li>
+<li>Click <strong>File &gt; Open</strong> and upload this <code>.md</code> file, or paste the content into a new document.</li>
+<li>Apply heading styles (Heading 1, Heading 2) to match the section titles if needed.</li>
+<li>Click <strong>File &gt; Download &gt; PDF Document (.pdf)</strong>.</li>
+</ol>
+<h3>Option B — VS Code with Markdown PDF extension</h3>
+<ol>
+<li>Open the <code>.md</code> file in VS Code.</li>
+<li>Install the <strong>Markdown PDF</strong> extension by yzane (search in the Extensions panel).</li>
+<li>Open the Command Palette (<code>Ctrl+Shift+P</code> on Windows, <code>Cmd+Shift+P</code> on Mac).</li>
+<li>Type <strong>Markdown PDF: Export (pdf)</strong> and press Enter.</li>
+<li>The PDF is saved in the same folder as the <code>.md</code> file.</li>
+</ol>
+</body>
+</html>

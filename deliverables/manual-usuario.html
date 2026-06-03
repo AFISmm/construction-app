@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Manual de Usuario — ConstructionApp</title>
+<style>
+  @page { margin: 2cm; }
+  body { font-family: Arial, sans-serif; font-size: 11pt; color: #222; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+  h1 { color: #1a5276; border-bottom: 2px solid #1a5276; padding-bottom: 8px; font-size: 20pt; }
+  h2 { color: #2471a3; margin-top: 24px; font-size: 14pt; }
+  h3 { color: #444; font-size: 12pt; margin-top: 14px; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 20px 0; }
+  blockquote { background: #f8f9fa; border-left: 4px solid #2471a3; margin: 10px 0; padding: 8px 14px; border-radius: 4px; font-size: 10.5pt; }
+  code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 10pt; }
+  strong { color: #1a252f; }
+  ol, ul { padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  @media print { body { max-width: 100%; padding: 0; } }
+</style>
+</head>
+<body>
+<h1>Manual de Usuario — ConstructionApp</h1>
+<h2>¿Qué es ConstructionApp?</h2>
+<p>ConstructionApp es una herramienta en línea para controlar el presupuesto y los gastos de proyectos de construcción o remodelación. Permite registrar líneas de presupuesto por categoría, ingresar gastos, visualizar el avance de ejecución y generar reportes. Está diseñada para gerentes de proyecto y propietarios que necesitan tener el control del dinero en todo momento, sin necesidad de conocimientos técnicos.</p>
+<hr />
+<h2>Cómo acceder</h2>
+<ol>
+<li>Abre tu navegador y ve a <code>https://constructionapp.streamlit.app</code>.</li>
+<li>Escribe tu <strong>Correo electronico</strong> en el campo correspondiente.</li>
+<li>Escribe tu <strong>Contrasena</strong> y haz clic en <strong>Ingresar</strong>.</li>
+<li>Si es tu primera vez, haz clic en la pestaña <strong>Crear cuenta</strong>, completa el formulario y haz clic en <strong>Registrarse</strong>.</li>
+</ol>
+<blockquote>
+<p>⚠️ Las cuentas nuevas quedan pendientes de aprobación. Recibirás acceso una vez que el administrador apruebe tu solicitud.</p>
+<p>💡 Si olvidaste tu contraseña, contacta al administrador del sistema.</p>
+</blockquote>
+<hr />
+<h2>Gestión de proyectos</h2>
+<h3>Ver tus proyectos</h3>
+<ol>
+<li>En la barra lateral izquierda, haz clic en <strong>Proyectos</strong>.</li>
+<li>Verás la lista de todos tus proyectos con el <strong>Presupuesto total</strong> y el <strong>% Ejecutado</strong> de cada uno.</li>
+<li>Para activar un proyecto, haz clic en <strong>Seleccionar</strong> junto al nombre del proyecto que quieres trabajar.</li>
+</ol>
+<h3>Crear un proyecto nuevo</h3>
+<ol>
+<li>Haz clic en <strong>+ Nuevo proyecto</strong> en la barra lateral.</li>
+<li>Escribe el <strong>Nombre del proyecto</strong> (por ejemplo: "Remodelacion Casa Bogota").</li>
+<li>Selecciona el <strong>Tipo de proyecto</strong>: Residencial o Comercial.</li>
+<li>Agrega una <strong>Descripcion</strong> si lo deseas.</li>
+<li>Haz clic en <strong>Crear proyecto</strong>.</li>
+</ol>
+<h3>Editar un proyecto</h3>
+<ol>
+<li>Ve a <strong>Proyectos</strong> en la barra lateral.</li>
+<li>Ubica el proyecto que quieres modificar y haz clic en <strong>Editar</strong>.</li>
+<li>Realiza los cambios y haz clic en <strong>Guardar</strong>.</li>
+</ol>
+<blockquote>
+<p>⚠️ Eliminar un proyecto borrará todos sus datos de forma permanente y no se puede deshacer.</p>
+</blockquote>
+<hr />
+<h2>Presupuesto</h2>
+<ol>
+<li>Asegúrate de tener un <strong>Proyecto activo</strong> seleccionado en la barra lateral.</li>
+<li>Haz clic en <strong>Presupuesto</strong> en la barra lateral.</li>
+<li>Haz clic en el panel <strong>Agregar linea</strong> para desplegarlo.</li>
+<li>Selecciona la <strong>Categoria</strong> (por ejemplo: "Instalaciones Electricas").</li>
+<li>Si aplica, selecciona la <strong>Habitacion</strong> asociada o deja <strong>Todo el proyecto</strong>.</li>
+<li>Escribe una <strong>Descripcion</strong> opcional para identificar la línea.</li>
+<li>Ingresa el <strong>Monto presupuestado</strong>.</li>
+<li>Haz clic en <strong>Guardar</strong>.</li>
+</ol>
+<blockquote>
+<p>💡 Las líneas de presupuesto están organizadas por categorías principales (Adquisicion del Bien, Costos Blandos, Presupuesto de Construccion, etc.). Elige la categoría que mejor describe el rubro.</p>
+</blockquote>
+<hr />
+<h2>Gastos</h2>
+<ol>
+<li>Haz clic en <strong>Gastos</strong> en la barra lateral.</li>
+<li>Ubica la línea de presupuesto sobre la que quieres registrar el gasto.</li>
+<li>Haz clic en <strong>Registrar gasto</strong> junto a esa línea.</li>
+<li>Completa los campos: <strong>Proveedor</strong>, <strong>Descripcion</strong>, <strong>Monto</strong>, <strong>Fecha</strong> y <strong>Notas</strong> (opcional).</li>
+<li>Haz clic en <strong>Guardar</strong>.</li>
+</ol>
+<blockquote>
+<p>⚠️ Si el gasto supera el monto presupuestado de la línea, verás el aviso "Esta categoria supera el presupuesto". Revisa el valor antes de confirmar.</p>
+</blockquote>
+<hr />
+<h2>Reportes y progreso</h2>
+<ol>
+<li>Haz clic en <strong>Progreso</strong> en la barra lateral.</li>
+<li>Verás la barra de <strong>Ejecucion total del proyecto</strong> con el porcentaje ejecutado hasta el momento.</li>
+<li>El gráfico <strong>Presupuesto vs. Ejecutado por categoria</strong> muestra, para cada categoría, el monto presupuestado frente al ejecutado.</li>
+<li>La tabla de varianza muestra la columna <strong>Variacion</strong> por categoría (positivo = bajo presupuesto, negativo = sobre presupuesto).</li>
+<li>Para exportar los datos, haz clic en <strong>Exportar CSV</strong> o <strong>Exportar Excel</strong>.</li>
+</ol>
+<blockquote>
+<p>💡 Usa la exportación a Excel para compartir el reporte con el cliente o el equipo de obra.</p>
+</blockquote>
+<hr />
+<h2>Importar un archivo</h2>
+<ol>
+<li>Haz clic en <strong>Importar</strong> en la barra lateral.</li>
+<li>Selecciona cómo quieres importar: <strong>Importar nuevo</strong> (crea líneas nuevas) o <strong>Importar en el mismo proyecto</strong> (combina con las líneas existentes).</li>
+<li>Haz clic en <strong>Selecciona archivo</strong> y elige un archivo <code>.xlsx</code>, <code>.xls</code> o <code>.csv</code> desde tu computador.</li>
+<li>La app mostrará una <strong>Vista previa</strong> con cuatro columnas: <strong>Descripcion original</strong>, <strong>Categoria asignada</strong>, <strong>Confianza</strong> y <strong>Corregir</strong>.</li>
+<li>Revisa las filas marcadas (baja confianza). Si la categoría asignada no es correcta, usa el menú <strong>Corregir</strong> para cambiarla.</li>
+<li>Cuando todas las filas estén revisadas, haz clic en <strong>Confirmar importacion</strong>.</li>
+</ol>
+<blockquote>
+<p>⚠️ No podrás confirmar la importación mientras haya filas marcadas sin revisar. El sistema te mostrará el mensaje "Revisa todas las filas marcadas antes de confirmar."</p>
+</blockquote>
+<hr />
+<h2>Cambiar idioma</h2>
+<p>Los botones <strong>ES</strong> y <strong>EN</strong> aparecen en la esquina superior derecha de cualquier pantalla.</p>
+<ol>
+<li>Haz clic en <strong>ES</strong> para cambiar la interfaz a español.</li>
+<li>Haz clic en <strong>EN</strong> para cambiar la interfaz a inglés.</li>
+</ol>
+<p>El idioma seleccionado se mantiene durante toda la sesión.</p>
+<hr />
+<h2>Cerrar sesión</h2>
+<ol>
+<li>En la barra lateral, desplázate hasta el final.</li>
+<li>Haz clic en <strong>Cerrar sesion</strong>.</li>
+<li>Serás redirigido a la pantalla de inicio de sesión.</li>
+</ol>
+<blockquote>
+<p>💡 Cierra siempre la sesión si usas un dispositivo compartido o público.</p>
+</blockquote>
+<hr />
+<h2>Cómo convertir este documento a PDF</h2>
+<p><strong>Opción 1 — Google Docs:</strong>
+1. Abre docs.google.com → Nuevo documento
+2. Copia y pega el contenido de este archivo
+3. Archivo → Descargar → PDF</p>
+<p><strong>Opción 2 — VS Code:</strong>
+Instala la extensión "Markdown PDF" → clic derecho en el archivo → "Export (pdf)"</p>
+</body>
+</html>

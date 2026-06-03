@@ -1,0 +1,19 @@
+# Core framework
+streamlit==1.45.1
+
+# Database
+sqlalchemy==2.0.41
+psycopg2-binary>=2.9.10
+
+# Data processing
+pandas==2.2.3
+openpyxl==3.1.5
+
+# Fuzzy matching (import pipeline)
+rapidfuzz==3.13.0
+
+# Utilities
+python-dateutil==2.9.0
+
+# AI suggestions (import pipeline via OpenRouter)
+openai>=1.0.0
