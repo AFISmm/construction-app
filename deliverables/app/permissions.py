@@ -12,6 +12,42 @@ ALL_PAGES = [
     "dashboard", "expenses", "presupuesto", "trazabilidad", "timeline", "proveedores", "account",
 ]
 
+# Roles del sistema
+INTERNAL_ROLES = [
+    "coordinador_construccion",
+    "coordinador_pagos",
+    "gestor_permisos",
+    "usuario_general",
+]
+EXTERNAL_ROLES = ["proveedor", "contratista"]
+ALL_ROLES = ["admin"] + INTERNAL_ROLES + EXTERNAL_ROLES
+ROLE_LABELS_ES = {
+    "proveedor":                "Proveedor",
+    "coordinador_construccion": "Coordinador de Construcción",
+    "contratista":              "Contratista",
+    "coordinador_pagos":        "Coordinador de Pagos",
+    "gestor_permisos":          "Gestor de Permisos",
+    "usuario_general":          "Usuario General",
+    "admin":                    "Administrador",
+    "super_admin":              "Super Administrador",
+    "pending":                  "Pendiente",
+    "pending_extended":         "Registro pendiente",
+    "rejected":                 "Rechazado",
+}
+ROLE_LABELS_EN = {
+    "proveedor":                "Vendor",
+    "coordinador_construccion": "Construction Coordinator",
+    "contratista":              "Contractor",
+    "coordinador_pagos":        "Payments Coordinator",
+    "gestor_permisos":          "Permits Manager",
+    "usuario_general":          "General User",
+    "admin":                    "Administrator",
+    "super_admin":              "Super Administrator",
+    "pending":                  "Pending",
+    "pending_extended":         "Registration pending",
+    "rejected":                 "Rejected",
+}
+
 PAGE_FILES = {
     "dashboard":   "pages/dashboard.py",
     "expenses":    "pages/expenses.py",
@@ -27,7 +63,18 @@ PAGE_FILES = {
 def is_pending(user_id: int) -> bool:
     """True if user is registered but not yet approved by super admin."""
     perm = get_permission(user_id)
-    return perm is not None and perm.role in ("pending", "rejected")
+    return perm is not None and perm.role in ("pending", "rejected", "pending_extended")
+
+
+def is_pending_extended(user_id: int) -> bool:
+    """True if user was approved as vendor/contractor and must fill the extended form."""
+    perm = get_permission(user_id)
+    return perm is not None and perm.role == "pending_extended"
+
+
+def is_external_role(role: str) -> bool:
+    """True if the given role belongs to the external category."""
+    return role in EXTERNAL_ROLES
 
 
 def get_pending_users() -> list[dict]:
@@ -74,13 +121,13 @@ VIEWER_DEFAULT_PAGES = ["dashboard", "expenses", "presupuesto", "trazabilidad", 
 
 
 def is_viewer(user_id: int) -> bool:
-    """True if user has explicit viewer role."""
+    """True if user has any non-admin, non-pending role (i.e., a restricted active user)."""
     if is_super_admin(user_id):
         return False
     perm = get_permission(user_id)
     if perm is None:
         return False
-    return perm.role == "viewer"
+    return perm.role not in ("admin", "super_admin", "pending", "rejected", "pending_extended")
 
 
 def can_edit_trazabilidad(user_id: int) -> bool:

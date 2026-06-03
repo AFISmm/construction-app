@@ -241,6 +241,22 @@ class UserPermission(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
 
+class ExtendedProfile(Base):
+    __tablename__ = "extended_profiles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    company_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    middle_name: Mapped[Optional[str]] = mapped_column(String(100))
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    phone: Mapped[Optional[str]] = mapped_column(String(50))
+    contact_email: Mapped[str] = mapped_column(String(254), nullable=False)
+    category: Mapped[str] = mapped_column(String(200), nullable=False)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
 # ---------------------------------------------------------------------------
 # Trazabilidad — Budget versioning & audit
 # ---------------------------------------------------------------------------
@@ -317,6 +333,7 @@ def _run_migrations() -> None:
     from sqlalchemy import text
     migrations = [
         "ALTER TABLE user_permissions ADD COLUMN IF NOT EXISTS managed_user_ids TEXT",
+        "ALTER TABLE extended_profiles ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP",
     ]
     with _get_engine().connect() as conn:
         for sql in migrations:

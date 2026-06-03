@@ -13,7 +13,7 @@ from db import init_db, seed_categories
 from i18n import language_toggle, set_language, t
 from permissions import (PAGE_FILES, VIEWER_DEFAULT_PAGES, get_allowed_pages,
                          get_pending_count, get_visible_projects,
-                         is_admin, is_pending, is_viewer, save_permission)
+                         is_admin, is_pending, is_pending_extended, is_viewer, save_permission)
 from projects import project_selector_sidebar
 
 st.set_page_config(page_title="Control de Presupuesto", layout="wide", initial_sidebar_state="expanded")
@@ -338,6 +338,15 @@ def main() -> None:
     if not user:
         _login_page()
         return
+    # Usuarios con registro extendido pendiente de completar
+    if is_pending_extended(user["id"]):
+        # Include extended_registration in allowed pages so it can render
+        _ext_pages = [st.Page("pages/extended_registration.py", title="Registration", default=True)]
+        _ext_nav = st.navigation(_ext_pages, position="hidden")
+        _lang_buttons()
+        _ext_nav.run()
+        return
+
     # Block pending users
     if is_pending(user["id"]):
         st.markdown(_HIDE_CHROME, unsafe_allow_html=True)
@@ -369,6 +378,7 @@ def main() -> None:
         "admin":         st.Page("pages/admin.py",         title=t("nav.admin")),
     }
     pages = [p for k, p in page_map.items() if k in allowed]
+    pages.append(st.Page("pages/extended_registration.py", title="Registration"))
     pg = st.navigation(pages, position="hidden")
     _lang_buttons()
     _sidebar(user)
