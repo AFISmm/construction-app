@@ -378,7 +378,6 @@ def main() -> None:
         "admin":         st.Page("pages/admin.py",         title=t("nav.admin")),
     }
     pages = [p for k, p in page_map.items() if k in allowed]
-    pages.append(st.Page("pages/extended_registration.py", title="Registration"))
     pg = st.navigation(pages, position="hidden")
     _lang_buttons()
     _sidebar(user)
