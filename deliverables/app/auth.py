@@ -178,6 +178,23 @@ def require_auth() -> dict:
 # Password authentication
 # ---------------------------------------------------------------------------
 
+def validate_password_strength(password: str) -> list[str]:
+    """Return list of error messages; empty list means password is valid."""
+    import re
+    errors = []
+    if len(password) < 8:
+        errors.append("Mínimo 8 caracteres.")
+    if not re.search(r"[A-Z]", password):
+        errors.append("Debe contener al menos una letra mayúscula.")
+    if not re.search(r"[a-z]", password):
+        errors.append("Debe contener al menos una letra minúscula.")
+    if not re.search(r"\d", password):
+        errors.append("Debe contener al menos un número.")
+    if not re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>/?`~]", password):
+        errors.append("Debe contener al menos un carácter especial (!@#$%...).")
+    return errors
+
+
 def _hash_password(password: str) -> str:
     salt = os.urandom(16)
     key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 200_000)
@@ -194,14 +211,28 @@ def _verify_password_hash(password: str, stored: str) -> bool:
         return False
 
 
-def set_password(user_id: int, password: str) -> None:
+def set_password(user_id: int, password: str, force_change: bool = False) -> None:
     h = _hash_password(password)
     with get_session() as session:
         existing = session.get(UserPassword, user_id)
         if existing:
             existing.password_hash = h
+            existing.must_change = force_change
         else:
-            session.add(UserPassword(user_id=user_id, password_hash=h))
+            session.add(UserPassword(user_id=user_id, password_hash=h, must_change=force_change))
+
+
+def must_change_password(user_id: int) -> bool:
+    with get_session() as session:
+        pwd = session.get(UserPassword, user_id)
+        return bool(pwd and pwd.must_change)
+
+
+def clear_must_change(user_id: int) -> None:
+    with get_session() as session:
+        pwd = session.get(UserPassword, user_id)
+        if pwd:
+            pwd.must_change = False
 
 
 def login_with_password(email: str, password: str) -> str:

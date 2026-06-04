@@ -171,7 +171,7 @@ if not _read_only:
             st.info(t("expense.no_expenses"))
         else:
             df_exp = _pd.DataFrame(all_exps)
-            ec1, ec2 = st.columns(2)
+            ec1, ec2, ec3 = st.columns(3)
             ec1.download_button(
                 "⬇️ CSV", df_exp.to_csv(index=False).encode("utf-8-sig"),
                 file_name="gastos.csv", mime="text/csv",
@@ -184,6 +184,18 @@ if not _read_only:
                 file_name="gastos.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
+            try:
+                from reports import export_pdf as _epdf
+                from projects import get_project_summary as _gps
+                _summ = _gps(project_id)
+                _pname = _summ.name if _summ else "Gastos"
+                _pdf = _epdf(project_id, _pname, _summ.currency if _summ else "")
+                ec3.download_button(
+                    "⬇️ PDF", _pdf,
+                    file_name="gastos.pdf", mime="application/pdf",
+                )
+            except Exception:
+                ec3.caption("PDF no disponible" if _lang == "es" else "PDF unavailable")
 
 # ── File attachment — import expenses from CSV/Excel ──────────────────────────
 if not _read_only:

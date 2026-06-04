@@ -202,11 +202,11 @@ if _is_super:
                             s.flush()
                             uid_new = u_new.id
                     if uid_new:
-                        set_password(uid_new, new_pwd)
+                        set_password(uid_new, new_pwd, force_change=True)
                         if new_role not in ("admin", "super_admin"):
                             save_permission(uid_new, new_role, list(PAGE_LABELS.keys()), None)
                         st.session_state["_show_create_user"] = False
-                        st.success(f"Usuario {new_email} creado con rol {ROLE_LABELS.get(new_role, new_role)}.")
+                        st.success(f"Usuario {new_email} creado. Deberá cambiar su contraseña al ingresar.")
                         st.rerun()
     st.divider()
 
@@ -251,7 +251,7 @@ for u in visible_users:
                 format_func=lambda r: ROLE_LABELS.get(r, r),
             )
 
-            st.markdown("**Páginas visibles:**")
+            st.markdown("**" + ("Visible pages" if _lang == "en" else "Páginas visibles") + ":**")
             current_pages = u["allowed_pages"] if u["allowed_pages"] is not None else list(PAGE_LABELS.keys())
             selected_pages = []
             cols = st.columns(2)
@@ -259,9 +259,22 @@ for u in visible_users:
                 if cols[i % 2].checkbox(lbl, value=key in current_pages, key=f"p_{u['id']}_{key}"):
                     selected_pages.append(key)
 
+            st.markdown("**" + ("Visible projects" if _lang == "en" else "Proyectos visibles") + ":**")
+            selected_project_ids = []
+            if project_options:
+                for pname, pid in project_options.items():
+                    checked_p = (u["allowed_project_ids"] is None or
+                                 (u["allowed_project_ids"] is not None and pid in u["allowed_project_ids"]))
+                    if st.checkbox(pname, value=checked_p, key=f"proj_{u['id']}_{pid}"):
+                        selected_project_ids.append(pid)
+                if len(selected_project_ids) == len(project_options):
+                    selected_project_ids = None
+            else:
+                st.caption("No hay proyectos." if _lang == "es" else "No projects.")
+
             if st.form_submit_button("💾 Guardar permisos", use_container_width=True):
                 pages_to_save = None if role in ("admin", "super_admin") else (selected_pages or list(PAGE_LABELS.keys()))
-                save_permission(u["id"], role, pages_to_save, None)
+                save_permission(u["id"], role, pages_to_save, selected_project_ids)
                 st.success("Permissions updated." if _lang == "en" else "Permisos actualizados.")
                 st.rerun()
 
@@ -269,11 +282,16 @@ for u in visible_users:
         with st.form(f"pwd_{u['id']}"):
             new_pwd = st.text_input("New password" if _lang == "en" else "Nueva contraseña", type="password", key=f"pw_{u['id']}")
             if st.form_submit_button("Save password" if _lang == "en" else "Guardar contraseña", use_container_width=True):
-                if len(new_pwd) < 6:
-                    st.error("Mínimo 6 caracteres.")
+                from auth import validate_password_strength as _vps
+                _errs = _vps(new_pwd)
+                if _errs:
+                    for _e in _errs:
+                        st.error(_e)
                 else:
-                    set_password(u["id"], new_pwd)
-                    st.success("Password updated." if _lang == "en" else "Contraseña actualizada.")
+                    set_password(u["id"], new_pwd, force_change=True)
+                    st.success("Password updated. User will be prompted to change it on next login."
+                               if _lang == "en" else
+                               "Contraseña actualizada. El usuario deberá cambiarla al próximo ingreso.")
 
         if _is_super:
             st.markdown("**Delete user**" if _lang == "en" else "**Eliminar usuario**")

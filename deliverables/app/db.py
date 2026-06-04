@@ -215,6 +215,7 @@ class UserPassword(Base):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    must_change: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
 
@@ -334,6 +335,7 @@ def _run_migrations() -> None:
     migrations = [
         "ALTER TABLE user_permissions ADD COLUMN IF NOT EXISTS managed_user_ids TEXT",
         "ALTER TABLE extended_profiles ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP",
+        "ALTER TABLE user_passwords ADD COLUMN IF NOT EXISTS must_change BOOLEAN DEFAULT FALSE",
     ]
     with _get_engine().connect() as conn:
         for sql in migrations:

@@ -4,10 +4,10 @@ from __future__ import annotations
 import streamlit as st
 
 from auth import (
-    RateLimitError, create_persistent_session, get_current_user,
-    invalidate_persistent_session, login_with_password, logout,
-    send_otp, set_password, user_has_password, validate_persistent_session,
-    verify_otp,
+    RateLimitError, clear_must_change, create_persistent_session, get_current_user,
+    invalidate_persistent_session, login_with_password, logout, must_change_password,
+    send_otp, set_password, user_has_password, validate_password_strength,
+    validate_persistent_session, verify_otp,
 )
 from db import init_db, seed_categories
 from i18n import language_toggle, set_language, t
@@ -292,10 +292,12 @@ def _login_page() -> None:
                     reg_pwd2  = st.text_input(t("auth.confirm_password_label"), type="password", key="reg_pwd2")
                     reg_submitted = st.form_submit_button(t("auth.register_button"), use_container_width=True)
                 if reg_submitted:
+                    _pwd_errors = validate_password_strength(reg_pwd1)
                     if not reg_email or "@" not in reg_email:
                         st.error(t("error.invalid_email"))
-                    elif len(reg_pwd1) < 6:
-                        st.error(t("auth.password_too_short"))
+                    elif _pwd_errors:
+                        for _e in _pwd_errors:
+                            st.error(_e)
                     elif reg_pwd1 != reg_pwd2:
                         st.error(t("auth.password_mismatch"))
                     else:
@@ -338,6 +340,39 @@ def main() -> None:
     if not user:
         _login_page()
         return
+    # Forzar cambio de contraseña en primer login
+    if must_change_password(user["id"]):
+        st.markdown(_HIDE_CHROME, unsafe_allow_html=True)
+        _lang = st.session_state.get("lang", "en")
+        _, col, _ = st.columns([1, 2, 1])
+        with col:
+            st.subheader("🔐 Crea tu contraseña" if _lang == "es" else "🔐 Create your password")
+            st.info("El administrador creó tu cuenta. Debes establecer una nueva contraseña para continuar."
+                    if _lang == "es" else
+                    "The administrator created your account. You must set a new password to continue.")
+            with st.form("force_pwd_form"):
+                np1 = st.text_input("Nueva contraseña" if _lang == "es" else "New password", type="password")
+                np2 = st.text_input("Confirmar contraseña" if _lang == "es" else "Confirm password", type="password")
+                if st.form_submit_button("Guardar y continuar" if _lang == "es" else "Save and continue",
+                                         use_container_width=True, type="primary"):
+                    errs = validate_password_strength(np1)
+                    if np1 != np2:
+                        errs.append("Las contraseñas no coinciden." if _lang == "es" else "Passwords do not match.")
+                    if errs:
+                        for e in errs:
+                            st.error(e)
+                    else:
+                        set_password(user["id"], np1, force_change=False)
+                        clear_must_change(user["id"])
+                        st.success("✅ Contraseña guardada." if _lang == "es" else "✅ Password saved.")
+                        st.rerun()
+            st.caption("Requisitos: 8+ caracteres, mayúscula, minúscula, número y carácter especial."
+                       if _lang == "es" else
+                       "Requirements: 8+ characters, uppercase, lowercase, number and special character.")
+            if st.button(t("nav.logout"), key="_force_logout"):
+                logout()
+        st.stop()
+
     # Usuarios con registro extendido pendiente de completar
     if is_pending_extended(user["id"]):
         # Include extended_registration in allowed pages so it can render
