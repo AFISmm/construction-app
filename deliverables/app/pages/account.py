@@ -1,8 +1,7 @@
 """User Management / Account page."""
 import streamlit as st
-from auth import clear_must_change, logout, require_auth, set_password, validate_password_strength
-from auth import _verify_password_hash
-from db import UserPassword, get_session
+from auth import (clear_must_change, logout, require_auth, set_password,
+                  validate_password_strength, verify_current_password)
 from i18n import t
 
 user = require_auth()
@@ -37,10 +36,7 @@ with st.form("change_pwd_form"):
 
 if save_btn:
     errors = []
-    # Verify current password
-    with get_session() as _s:
-        _pwd_rec = _s.get(UserPassword, user["id"])
-    if not _pwd_rec or not _verify_password_hash(current_pwd, _pwd_rec.password_hash):
+    if not verify_current_password(user["id"], current_pwd):
         errors.append("Contraseña actual incorrecta." if _lang == "es" else "Current password is incorrect.")
     if new_pwd != confirm_pwd:
         errors.append("Las contraseñas no coinciden." if _lang == "es" else "Passwords do not match.")

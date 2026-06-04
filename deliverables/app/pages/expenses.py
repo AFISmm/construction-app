@@ -152,56 +152,64 @@ t3.metric(t("project.balance"),       fmt_money(grand_balance),
           delta_color="normal" if grand_balance >= 0 else "inverse")
 
 # ── Export expenses ───────────────────────────────────────────────────────────
+# ── Barra de exportación / importación ───────────────────────────────────────
 if not _read_only:
     st.divider()
-    with st.expander("📤 Exportar gastos" if _lang == "es" else "📤 Export expenses"):
-        import pandas as _pd
-        import io as _io
-        all_exps = []
-        for line in lines:
-            for exp in get_expenses(project_id, line.id):
-                all_exps.append({
-                    "Categoria" if _lang == "es" else "Category": _translated_cat(line.category_code),
-                    "Proveedor" if _lang == "es" else "Vendor": exp.vendor or "—",
-                    "Descripcion" if _lang == "es" else "Description": exp.description or "—",
-                    "Monto" if _lang == "es" else "Amount": float(exp.amount),
-                    "Fecha" if _lang == "es" else "Date": str(exp.expense_date),
-                })
-        if not all_exps:
-            st.info(t("expense.no_expenses"))
-        else:
-            df_exp = _pd.DataFrame(all_exps)
-            ec1, ec2, ec3 = st.columns(3)
-            ec1.download_button(
-                "⬇️ CSV", df_exp.to_csv(index=False).encode("utf-8-sig"),
-                file_name="gastos.csv", mime="text/csv",
-            )
-            buf_xl = _io.BytesIO()
-            with _pd.ExcelWriter(buf_xl, engine="openpyxl") as writer:
-                df_exp.to_excel(writer, index=False, sheet_name="Gastos")
-            ec2.download_button(
-                "⬇️ Excel", buf_xl.getvalue(),
-                file_name="gastos.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-            try:
-                from reports import export_pdf as _epdf
-                from projects import get_project_summary as _gps
-                _summ = _gps(project_id)
-                _pname = _summ.name if _summ else "Gastos"
-                _pdf = _epdf(project_id, _pname, _summ.currency if _summ else "")
-                ec3.download_button(
-                    "⬇️ PDF", _pdf,
-                    file_name="gastos.pdf", mime="application/pdf",
-                )
-            except Exception:
-                ec3.caption("PDF no disponible" if _lang == "es" else "PDF unavailable")
+    import pandas as _pd
+    import io as _io
 
-# ── File attachment — import expenses from CSV/Excel ──────────────────────────
-if not _read_only:
+    all_exps = []
+    for line in lines:
+        for exp in get_expenses(project_id, line.id):
+            all_exps.append({
+                "Categoria" if _lang == "es" else "Category": _translated_cat(line.category_code),
+                "Proveedor" if _lang == "es" else "Vendor":   exp.vendor or "—",
+                "Descripcion" if _lang == "es" else "Description": exp.description or "—",
+                "Monto" if _lang == "es" else "Amount": float(exp.amount),
+                "Fecha"  if _lang == "es" else "Date":    str(exp.expense_date),
+            })
+    df_exp = _pd.DataFrame(all_exps) if all_exps else _pd.DataFrame()
+
+    # Fila: [CSV][Excel][PDF]  ···spacer···  [Importar]
+    bc1, bc2, bc3, _sp, bc4 = st.columns([1, 1, 1, 2, 1.2])
+
+    if not df_exp.empty:
+        bc1.download_button(
+            "📥 CSV", df_exp.to_csv(index=False).encode("utf-8-sig"),
+            file_name="gastos.csv", mime="text/csv", use_container_width=True,
+        )
+        _buf_xl = _io.BytesIO()
+        with _pd.ExcelWriter(_buf_xl, engine="openpyxl") as _wr:
+            df_exp.to_excel(_wr, index=False, sheet_name="Gastos")
+        bc2.download_button(
+            "📥 Excel", _buf_xl.getvalue(),
+            file_name="gastos.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
+        try:
+            from reports import export_pdf as _epdf
+            from projects import get_project_summary as _gps
+            _summ = _gps(project_id)
+            _pdf = _epdf(project_id, _summ.name if _summ else "Gastos", _summ.currency if _summ else "")
+            bc3.download_button(
+                "📥 PDF", _pdf, file_name="gastos.pdf",
+                mime="application/pdf", use_container_width=True,
+            )
+        except Exception:
+            bc3.caption("—")
+    else:
+        bc1.caption(t("expense.no_expenses"))
+
+    _import_key = "_show_import_expenses"
+    if bc4.button("📤 " + ("Importar" if _lang == "es" else "Import"),
+                  key="_imp_btn", use_container_width=True):
+        st.session_state[_import_key] = not st.session_state.get(_import_key, False)
+
+# ── Panel de importación (se muestra al hacer clic en Importar) ───────────────
+if not _read_only and st.session_state.get("_show_import_expenses", False):
     st.divider()
-    attach_label = "📎 Import expenses from file" if _lang == "en" else "📎 Importar gastos desde archivo"
-    with st.expander(attach_label):
+    with st.container():
         st.caption(
             "Upload a CSV or Excel file with columns: Description, Vendor, Amount, Date, CategoryCode"
             if _lang == "en" else

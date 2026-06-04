@@ -251,13 +251,26 @@ for u in visible_users:
                 format_func=lambda r: ROLE_LABELS.get(r, r),
             )
 
-            st.markdown("**" + ("Visible pages" if _lang == "en" else "Páginas visibles") + ":**")
+            st.markdown("**" + ("Visible pages / Can edit" if _lang == "en" else "Páginas visibles / Puede editar") + ":**")
+            st.caption("Ver = página visible · Editar = puede modificar contenido" if _lang == "es"
+                       else "View = page visible · Edit = can modify content")
             current_pages = u["allowed_pages"] if u["allowed_pages"] is not None else list(PAGE_LABELS.keys())
             selected_pages = []
-            cols = st.columns(2)
-            for i, (key, lbl) in enumerate(PAGE_LABELS.items()):
-                if cols[i % 2].checkbox(lbl, value=key in current_pages, key=f"p_{u['id']}_{key}"):
+            # Header row
+            _h1, _h2, _h3 = st.columns([2, 1, 1])
+            _h2.markdown("<small>**Ver**</small>" if _lang == "es" else "<small>**View**</small>", unsafe_allow_html=True)
+            _h3.markdown("<small>**Editar**</small>" if _lang == "es" else "<small>**Edit**</small>", unsafe_allow_html=True)
+            for key, lbl in PAGE_LABELS.items():
+                if key == "admin":
+                    continue
+                _c1, _c2, _c3 = st.columns([2, 1, 1])
+                _c1.write(lbl)
+                _view = _c2.checkbox("", value=key in current_pages, key=f"p_{u['id']}_{key}", label_visibility="collapsed")
+                _edit = _c3.checkbox("", value=f"{key}_edit" in current_pages, key=f"pe_{u['id']}_{key}", label_visibility="collapsed")
+                if _view:
                     selected_pages.append(key)
+                if _edit:
+                    selected_pages.append(f"{key}_edit")
 
             st.markdown("**" + ("Visible projects" if _lang == "en" else "Proyectos visibles") + ":**")
             selected_project_ids = []

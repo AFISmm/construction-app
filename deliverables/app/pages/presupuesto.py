@@ -1,9 +1,9 @@
-"""Budget variance export — metrics and download buttons."""
+"""Budget — metrics and export buttons."""
 import streamlit as st
 from auth import require_auth
 from i18n import fmt_money, t
 from projects import get_project_summary
-from reports import export_pdf, export_xlsx
+from reports import build_variance_df, export_csv, export_pdf, export_xlsx
 
 user = require_auth()
 project_id = st.session_state.get("current_project_id")
@@ -24,28 +24,32 @@ if summary:
     c3.metric(t("project.balance"),      fmt_money(summary.balance))
     st.divider()
 
-currency = summary.currency if summary else ""
-project_name = summary.name if summary else "Budget"
-
-from reports import build_variance_df
+currency     = summary.currency if summary else ""
+project_name = summary.name     if summary else "Budget"
 df = build_variance_df(project_id, currency)
 
 if df.empty:
     st.info(t("common.no_data"))
 else:
-    col_pdf, col_xlsx = st.columns(2)
-    pdf_label  = t("report.export_pdf")
-    xlsx_label = t("report.export_xlsx")
-    try:
-        pdf_bytes = export_pdf(project_id, project_name, currency)
-        col_pdf.download_button(
-            f"📄 {pdf_label}", pdf_bytes,
-            file_name="presupuesto.pdf", mime="application/pdf",
-        )
-    except Exception as e:
-        col_pdf.warning(f"PDF no disponible: {e}" if _lang == "es" else f"PDF unavailable: {e}")
-    col_xlsx.download_button(
-        f"📊 {xlsx_label}", export_xlsx(project_id),
+    # ── Botones de exportación ────────────────────────────────────────────────
+    bc1, bc2, bc3 = st.columns(3)
+    bc1.download_button(
+        "📥 CSV", export_csv(project_id),
+        file_name="presupuesto.csv", mime="text/csv",
+        use_container_width=True,
+    )
+    bc2.download_button(
+        "📥 Excel", export_xlsx(project_id),
         file_name="presupuesto.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
     )
+    try:
+        pdf_bytes = export_pdf(project_id, project_name, currency)
+        bc3.download_button(
+            "📥 PDF", pdf_bytes,
+            file_name="presupuesto.pdf", mime="application/pdf",
+            use_container_width=True,
+        )
+    except Exception as e:
+        bc3.warning("PDF no disponible" if _lang == "es" else "PDF unavailable")

@@ -235,6 +235,14 @@ def clear_must_change(user_id: int) -> None:
             pwd.must_change = False
 
 
+def verify_current_password(user_id: int, password: str) -> bool:
+    with get_session() as session:
+        pwd = session.get(UserPassword, user_id)
+        if not pwd:
+            return False
+        return _verify_password_hash(password, pwd.password_hash)
+
+
 def login_with_password(email: str, password: str) -> str:
     """Return 'ok', 'no_password', or 'invalid'."""
     email = email.strip().lower()
