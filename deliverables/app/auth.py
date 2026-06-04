@@ -36,6 +36,44 @@ def _generate_raw_token() -> str:
 # Email dispatch
 # ---------------------------------------------------------------------------
 
+def send_budget_approval_email(approver_email: str, project_name: str,
+                               requester_email: str, version_label: str) -> bool:
+    """Send budget approval request email. Returns True if sent, False if SMTP not configured."""
+    import smtplib
+    import sys
+    from email.mime.text import MIMEText
+    cfg = st.secrets.get("email", {})
+    host     = cfg.get("smtp_host", cfg.get("host", "localhost"))
+    port     = int(cfg.get("smtp_port", cfg.get("port", 587)))
+    smtp_user = cfg.get("smtp_user", cfg.get("username", ""))
+    password = cfg.get("smtp_password", cfg.get("password", ""))
+    subject  = f"[Aprobación requerida] Presupuesto {version_label} — {project_name}"
+    body = (
+        f"Hola,\n\n"
+        f"{requester_email} ha enviado el presupuesto {version_label} del proyecto '{project_name}' "
+        f"para tu aprobación.\n\n"
+        f"Ingresa al portal para revisarlo y aprobarlo o rechazarlo en la pestaña "
+        f"'Versiones de Presupuesto'.\n\n"
+        f"Este es un mensaje automático."
+    )
+    if not smtp_user or smtp_user == "PENDIENTE" or not password or password == "PENDIENTE":
+        print(f"\n[NOTIF] Aprobación de presupuesto solicitada por {requester_email} → {approver_email}\n",
+              file=sys.stderr, flush=True)
+        return False
+    try:
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"]    = cfg.get("from_address", smtp_user)
+        msg["To"]      = approver_email
+        with smtplib.SMTP(host, port) as s:
+            s.starttls()
+            s.login(smtp_user, password)
+            s.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
 def _send_email(to_email: str, token: str) -> None:
     cfg = st.secrets.get("email", {})
     provider = cfg.get("provider", "smtp")

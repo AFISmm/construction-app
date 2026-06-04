@@ -1,9 +1,12 @@
 """Project Dashboard — metrics + editable variance table."""
 import altair as alt
 import streamlit as st
-from auth import require_auth
+from auth import require_auth, send_budget_approval_email
 from budget import get_budget_lines, get_category_totals, update_budget_line
+from budget_versioning import (change_status, create_budget, create_version,
+                               get_budgets, get_versions, STATUS_LABELS_ES, STATUS_LABELS_EN)
 from i18n import fmt_money, t
+from permissions import get_budget_approver_email
 from projects import get_project_summary
 from reports import chart_data, get_budget_increase_pct
 
@@ -122,14 +125,91 @@ else:
 
         st.write("")
 
-    # Save button
-    if not _read_only and pending_saves:
-        save_lbl = "Guardar cambios" if _lang == "es" else "Save changes"
-        if st.button(f"💾 {save_lbl}", type="primary"):
+    # ── Estado del presupuesto ────────────────────────────────────────────────
+    _SL = STATUS_LABELS_ES if _lang == "es" else STATUS_LABELS_EN
+    _budgets = get_budgets(project_id)
+    _cur_budget = _budgets[0] if _budgets else None
+    if _cur_budget:
+        _ver_lbl = f"V{_cur_budget.version_major}.{_cur_budget.version_minor}"
+        _status_lbl = _SL.get(_cur_budget.status, _cur_budget.status)
+        _color = {"draft": "#8ec5d6", "review": "#f59e0b", "approved": "#22c55e", "rejected": "#ef4444"}.get(_cur_budget.status, "#8ec5d6")
+        st.markdown(
+            f'<span style="background:{_color};color:#fff;padding:3px 10px;border-radius:10px;font-size:0.8rem;">'
+            f'📋 {_ver_lbl} · {_status_lbl}</span>',
+            unsafe_allow_html=True,
+        )
+        st.write("")
+
+    # ── Botones de acción ─────────────────────────────────────────────────────
+    if not _read_only:
+        _bc1, _bc2 = st.columns(2)
+
+        # Guardar borrador
+        _draft_lbl = "💾 Guardar borrador" if _lang == "es" else "💾 Save draft"
+        if _bc1.button(_draft_lbl, use_container_width=True):
             for line_id, new_amt in pending_saves:
                 update_budget_line(line_id, project_id, new_amt)
-            st.success("Cambios guardados." if _lang == "es" else "Changes saved.")
+            # Create or update budget as draft
+            _budgets2 = get_budgets(project_id)
+            if not _budgets2:
+                _new_b = create_budget(project_id, summary.name, user["id"])
+            else:
+                _b = _budgets2[0]
+                _lines_now = get_budget_lines(project_id)
+                _rows = [{"category_code": l.category_code, "description": l.description or "",
+                          "budgeted_amount": float(l.budgeted_amount), "room_id": l.room_id}
+                         for l in _lines_now]
+                create_version(_b.id, "minor",
+                               "Borrador guardado" if _lang == "es" else "Draft saved",
+                               _rows, user["id"])
+            st.success("✅ Guardado como borrador." if _lang == "es" else "✅ Saved as draft.")
             st.rerun()
+
+        # Enviar para aprobación
+        _approval_lbl = "📤 Enviar para aprobación" if _lang == "es" else "📤 Send for approval"
+        _approver_email = get_budget_approver_email()
+        if _bc2.button(_approval_lbl, use_container_width=True, type="primary"):
+            if not _approver_email:
+                st.warning(
+                    "No hay un aprobador configurado. Contacta al administrador."
+                    if _lang == "es" else
+                    "No budget approver configured. Contact the administrator."
+                )
+            else:
+                # Save budget line changes
+                for line_id, new_amt in pending_saves:
+                    update_budget_line(line_id, project_id, new_amt)
+                # Create version and set to review
+                _budgets3 = get_budgets(project_id)
+                _lines_now2 = get_budget_lines(project_id)
+                _rows2 = [{"category_code": l.category_code, "description": l.description or "",
+                            "budgeted_amount": float(l.budgeted_amount), "room_id": l.room_id}
+                           for l in _lines_now2]
+                if not _budgets3:
+                    _b3 = create_budget(project_id, summary.name, user["id"])
+                    _b3_id = _b3.id
+                else:
+                    _b3_id = _budgets3[0].id
+                    create_version(_b3_id, "minor",
+                                   "Enviado para aprobacion" if _lang == "es" else "Sent for approval",
+                                   _rows2, user["id"])
+                change_status(_b3_id, "review", user["id"],
+                              "Enviado para aprobacion" if _lang == "es" else "Sent for approval")
+                # Send notification
+                _bv_list = get_budgets(project_id)
+                _ver_str = (f"V{_bv_list[0].version_major}.{_bv_list[0].version_minor}"
+                            if _bv_list else "V1.0")
+                _sent = send_budget_approval_email(
+                    _approver_email, summary.name, user["email"], _ver_str
+                )
+                _notif = (f"✅ Presupuesto {_ver_str} enviado para aprobación a **{_approver_email}**."
+                          if _lang == "es" else
+                          f"✅ Budget {_ver_str} sent for approval to **{_approver_email}**.")
+                if not _sent:
+                    _notif += (" (Notificación por email pendiente de configurar SMTP.)"
+                               if _lang == "es" else " (Email notification pending SMTP configuration.)")
+                st.success(_notif)
+                st.rerun()
 
 st.divider()
 

@@ -8,8 +8,8 @@ from db import ExtendedProfile, User, UserPermission, get_session
 from i18n import t
 from permissions import (
     ALL_ROLES, EXTERNAL_ROLES, ROLE_LABELS_EN, ROLE_LABELS_ES,
-    VIEWER_DEFAULT_PAGES, get_all_users_with_permissions, get_pending_users,
-    is_admin, is_super_admin, save_permission,
+    VIEWER_DEFAULT_PAGES, get_all_users_with_permissions, get_budget_approver_email,
+    get_pending_users, is_admin, is_super_admin, save_permission, set_budget_approver,
 )
 from projects import get_user_projects
 
@@ -61,6 +61,38 @@ else:
 
 st.title(t("nav.admin"))
 st.divider()
+
+# ── Aprobador de presupuestos ─────────────────────────────────────────────────
+if _is_super:
+    _approver_title = "Aprobador de Presupuestos" if _lang == "es" else "Budget Approver"
+    st.subheader(f"✅ {_approver_title}")
+    _current_approver = get_budget_approver_email()
+    _approver_lbl = f"**{'Aprobador actual' if _lang == 'es' else 'Current approver'}:** {_current_approver or ('No asignado' if _lang == 'es' else 'Not assigned')}"
+    st.markdown(_approver_lbl)
+
+    # Options: None + all non-super-admin users
+    _user_opts = {("Sin aprobador" if _lang == "es" else "No approver"): None}
+    for _au in all_users:
+        if not is_super_admin(_au["id"]):
+            _user_opts[_au["email"]] = _au["id"]
+
+    _current_key = _current_approver if _current_approver in _user_opts else list(_user_opts.keys())[0]
+    _sel_approver_lbl = st.selectbox(
+        "Asignar aprobador" if _lang == "es" else "Assign approver",
+        list(_user_opts.keys()),
+        index=list(_user_opts.keys()).index(_current_key) if _current_key in _user_opts else 0,
+        key="_approver_sel",
+    )
+    if st.button("💾 " + ("Guardar aprobador" if _lang == "es" else "Save approver"), key="_save_approver"):
+        set_budget_approver(_user_opts[_sel_approver_lbl])
+        st.success("Aprobador actualizado." if _lang == "es" else "Approver updated.")
+        st.rerun()
+    st.caption(
+        "Solo este usuario recibirá notificaciones de aprobación de presupuesto y podrá aprobar o rechazar versiones."
+        if _lang == "es" else
+        "Only this user will receive budget approval notifications and can approve or reject versions."
+    )
+    st.divider()
 
 # ── Solicitudes pendientes de aprobación ──────────────────────────────────────
 if _is_super:

@@ -238,6 +238,7 @@ class UserPermission(Base):
     allowed_pages: Mapped[Optional[str]] = mapped_column(Text)        # JSON list or NULL = all pages
     allowed_project_ids: Mapped[Optional[str]] = mapped_column(Text)  # JSON list or NULL = all projects
     managed_user_ids: Mapped[Optional[str]] = mapped_column(Text)     # JSON list of user IDs this admin can manage
+    is_budget_approver: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -336,6 +337,7 @@ def _run_migrations() -> None:
         "ALTER TABLE user_permissions ADD COLUMN IF NOT EXISTS managed_user_ids TEXT",
         "ALTER TABLE extended_profiles ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP",
         "ALTER TABLE user_passwords ADD COLUMN IF NOT EXISTS must_change BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE user_permissions ADD COLUMN IF NOT EXISTS is_budget_approver BOOLEAN DEFAULT FALSE",
     ]
     with _get_engine().connect() as conn:
         for sql in migrations:

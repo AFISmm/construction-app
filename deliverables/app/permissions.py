@@ -215,6 +215,26 @@ def get_managed_users(user_id: int, all_users: list[dict]) -> list[dict]:
         return []
 
 
+def get_budget_approver_email() -> str | None:
+    """Return email of the designated budget approver, or None if not set."""
+    with get_session() as session:
+        perm = session.query(UserPermission).filter_by(is_budget_approver=True).first()
+        if not perm:
+            return None
+        u = session.get(User, perm.user_id)
+        return u.email if u else None
+
+
+def set_budget_approver(user_id: int | None) -> None:
+    """Set one user as budget approver; clears all others. Pass None to clear."""
+    with get_session() as session:
+        session.query(UserPermission).update({"is_budget_approver": False})
+        if user_id is not None:
+            perm = session.query(UserPermission).filter_by(user_id=user_id).first()
+            if perm:
+                perm.is_budget_approver = True
+
+
 def get_all_users_with_permissions() -> list[dict]:
     with get_session() as session:
         users = session.query(User).order_by(User.id).all()
