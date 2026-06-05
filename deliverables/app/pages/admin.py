@@ -269,11 +269,13 @@ for u in visible_users:
         with get_session() as _ps:
             _ext_prof = _ps.query(ExtendedProfile).filter_by(user_id=u["id"]).first()
         if _ext_prof:
-            with st.expander("📋 " + ("Extended profile" if _lang == "en" else "Perfil extendido"), expanded=False):
-                st.write(f"**{'Company' if _lang == 'en' else 'Empresa'}:** {_ext_prof.company_name}")
-                st.write(f"**{'Name' if _lang == 'en' else 'Nombre'}:** {_ext_prof.first_name} {_ext_prof.middle_name or ''} {_ext_prof.last_name}")
-                st.write(f"**{'Phone' if _lang == 'en' else 'Teléfono'}:** {_ext_prof.phone or '—'}")
-                st.write(f"**{'Category' if _lang == 'en' else 'Categoría'}:** {_ext_prof.category}")
+            st.markdown("📋 **" + ("Extended profile" if _lang == "en" else "Perfil extendido") + "**")
+            st.markdown(
+                f"**{'Company' if _lang == 'en' else 'Empresa'}:** {_ext_prof.company_name} &nbsp;|&nbsp; "
+                f"**{'Name' if _lang == 'en' else 'Nombre'}:** {_ext_prof.first_name} {_ext_prof.middle_name or ''} {_ext_prof.last_name} &nbsp;|&nbsp; "
+                f"**{'Phone' if _lang == 'en' else 'Tel'}:** {_ext_prof.phone or '—'} &nbsp;|&nbsp; "
+                f"**{'Category' if _lang == 'en' else 'Categoría'}:** {_ext_prof.category}"
+            )
 
         with st.form(key=f"perm_{u['id']}"):
             role = st.selectbox(
