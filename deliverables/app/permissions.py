@@ -9,7 +9,8 @@ import streamlit as st
 from db import Project, User, UserPermission, get_session
 
 ALL_PAGES = [
-    "dashboard", "expenses", "presupuesto", "trazabilidad", "timeline", "proveedores", "account",
+    "dashboard", "presupuesto", "expenses", "trazabilidad", "timeline",
+    "proveedores", "contratos", "account",
 ]
 
 # Roles del sistema
@@ -49,14 +50,15 @@ ROLE_LABELS_EN = {
 }
 
 PAGE_FILES = {
-    "dashboard":   "pages/dashboard.py",
-    "expenses":    "pages/expenses.py",
-    "presupuesto": "pages/presupuesto.py",
+    "dashboard":    "pages/dashboard.py",
+    "presupuesto":  "pages/presupuesto.py",
+    "expenses":     "pages/expenses.py",
     "trazabilidad": "pages/trazabilidad.py",
-    "timeline":    "pages/timeline.py",
-    "proveedores": "pages/proveedores.py",
-    "account":     "pages/account.py",
-    "admin":       "pages/admin.py",
+    "timeline":     "pages/timeline.py",
+    "proveedores":  "pages/proveedores.py",
+    "contratos":    "pages/contratos.py",
+    "account":      "pages/account.py",
+    "admin":        "pages/admin.py",
 }
 
 
@@ -117,7 +119,7 @@ def is_super_admin(user_id: int) -> bool:
     return False
 
 
-VIEWER_DEFAULT_PAGES = ["dashboard", "expenses", "presupuesto", "trazabilidad", "timeline", "account"]
+VIEWER_DEFAULT_PAGES = ["dashboard", "presupuesto", "expenses", "trazabilidad", "timeline", "account"]
 
 
 def is_viewer(user_id: int) -> bool:

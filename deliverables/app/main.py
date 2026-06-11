@@ -92,13 +92,14 @@ def _sidebar(user: dict) -> None:
         # Project selector (read-only display + dropdown to switch)
         project_selector_sidebar(user["id"])
         st.divider()
-        # Navigation — fixed order for all users
+        # Navigation — fixed order matching UX spec
         if "dashboard"    in allowed: st.page_link("pages/dashboard.py",    label=t("nav.dashboard"))
-        if "expenses"     in allowed: st.page_link("pages/expenses.py",     label=t("nav.expenses"))
         if "presupuesto"  in allowed: st.page_link("pages/presupuesto.py",  label=t("nav.presupuesto"))
+        if "expenses"     in allowed: st.page_link("pages/expenses.py",     label=t("nav.expenses"))
         if "trazabilidad" in allowed: st.page_link("pages/trazabilidad.py", label=t("nav.trazabilidad"))
         if "timeline"     in allowed: st.page_link("pages/timeline.py",     label=t("nav.timeline"))
         if "proveedores"  in allowed: st.page_link("pages/proveedores.py",  label=t("nav.proveedores"))
+        if "contratos"    in allowed: st.page_link("pages/contratos.py",    label=t("nav.contratos"))
         if "account"      in allowed: st.page_link("pages/account.py",      label=t("nav.account"))
         if "admin" in allowed:
             pending = get_pending_count()
@@ -192,6 +193,10 @@ def _login_page() -> None:
 
             /* Lang buttons */
             .stButton > button { border-radius: 4px !important; font-size: 0.75rem !important; }
+
+            /* Hide any text that appears near the password-visibility eye toggle */
+            button[data-testid="InputPasswordToggle"] span { display: none !important; }
+            button[data-testid="InputPasswordToggle"] p    { display: none !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -403,14 +408,15 @@ def main() -> None:
 
     allowed = get_allowed_pages(user["id"])
     page_map = {
-        "dashboard":     st.Page("pages/dashboard.py",     title=t("nav.dashboard"),     default=True),
-        "expenses":      st.Page("pages/expenses.py",      title=t("nav.expenses")),
-        "presupuesto":   st.Page("pages/presupuesto.py",   title=t("nav.presupuesto")),
-        "trazabilidad":  st.Page("pages/trazabilidad.py",  title=t("nav.trazabilidad")),
-        "timeline":      st.Page("pages/timeline.py",      title=t("nav.timeline")),
-        "proveedores":   st.Page("pages/proveedores.py",   title=t("nav.proveedores")),
-        "account":       st.Page("pages/account.py",       title=t("nav.account")),
-        "admin":         st.Page("pages/admin.py",         title=t("nav.admin")),
+        "dashboard":    st.Page("pages/dashboard.py",    title=t("nav.dashboard"),    default=True),
+        "presupuesto":  st.Page("pages/presupuesto.py",  title=t("nav.presupuesto")),
+        "expenses":     st.Page("pages/expenses.py",     title=t("nav.expenses")),
+        "trazabilidad": st.Page("pages/trazabilidad.py", title=t("nav.trazabilidad")),
+        "timeline":     st.Page("pages/timeline.py",     title=t("nav.timeline")),
+        "proveedores":  st.Page("pages/proveedores.py",  title=t("nav.proveedores")),
+        "contratos":    st.Page("pages/contratos.py",    title=t("nav.contratos")),
+        "account":      st.Page("pages/account.py",      title=t("nav.account")),
+        "admin":        st.Page("pages/admin.py",        title=t("nav.admin")),
     }
     pages = [p for k, p in page_map.items() if k in allowed]
     pg = st.navigation(pages, position="hidden")

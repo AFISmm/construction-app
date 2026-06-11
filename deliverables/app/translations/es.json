@@ -32,7 +32,8 @@
   "auth.welcome": "Bienvenido",
 
   "nav.language_toggle": "Idioma",
-  "nav.dashboard": "Inicio",
+  "nav.dashboard": "Tablero",
+  "nav.contratos": "Contratos",
   "nav.budget": "Presupuesto",
   "nav.expenses": "Gastos",
   "nav.import": "Importar",

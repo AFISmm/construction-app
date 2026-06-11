@@ -52,7 +52,9 @@ def create_budget_line(project_id: int, category_code: str, budgeted_amount: flo
 
 
 def update_budget_line(line_id: int, project_id: int, budgeted_amount: float,
-                       description: str = "", room_id: Optional[int] = None) -> bool:
+                       description: str = "", room_id: Optional[int] = None,
+                       change_order_amount: Optional[float] = None,
+                       contracted_amount: Optional[float] = None) -> bool:
     with get_session() as session:
         line = session.query(BudgetLine).filter_by(id=line_id, project_id=project_id).first()
         if not line:
@@ -60,6 +62,10 @@ def update_budget_line(line_id: int, project_id: int, budgeted_amount: float,
         line.budgeted_amount = budgeted_amount
         line.description = description.strip() or None
         line.room_id = room_id
+        if change_order_amount is not None:
+            line.change_order_amount = change_order_amount
+        if contracted_amount is not None:
+            line.contracted_amount = contracted_amount
         return True
 
 

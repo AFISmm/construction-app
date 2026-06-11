@@ -143,6 +143,8 @@ class BudgetLine(Base):
     room_id: Mapped[Optional[int]] = mapped_column(ForeignKey("rooms.id", ondelete="SET NULL"))
     description: Mapped[Optional[str]] = mapped_column(Text)
     budgeted_amount: Mapped[float] = mapped_column(Numeric(15, 2), default=0, nullable=False)
+    change_order_amount: Mapped[float] = mapped_column(Numeric(15, 2), default=0, nullable=False)
+    contracted_amount: Mapped[float] = mapped_column(Numeric(15, 2), default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -338,6 +340,8 @@ def _run_migrations() -> None:
         "ALTER TABLE extended_profiles ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP",
         "ALTER TABLE user_passwords ADD COLUMN IF NOT EXISTS must_change BOOLEAN DEFAULT FALSE",
         "ALTER TABLE user_permissions ADD COLUMN IF NOT EXISTS is_budget_approver BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE budget_lines ADD COLUMN IF NOT EXISTS change_order_amount NUMERIC(15,2) DEFAULT 0",
+        "ALTER TABLE budget_lines ADD COLUMN IF NOT EXISTS contracted_amount NUMERIC(15,2) DEFAULT 0",
     ]
     with _get_engine().connect() as conn:
         for sql in migrations:

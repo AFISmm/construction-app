@@ -33,6 +33,7 @@
 
   "nav.language_toggle": "Language",
   "nav.dashboard": "Dashboard",
+  "nav.contratos": "Contracts",
   "nav.budget": "Budget",
   "nav.expenses": "Expenses",
   "nav.import": "Import",

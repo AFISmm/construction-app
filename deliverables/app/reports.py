@@ -154,6 +154,30 @@ def export_pdf(project_id: int, project_name: str = "", currency: str = "") -> b
     return buf.getvalue()
 
 
+def get_budget_increase(project_id: int) -> tuple[float | None, float | None, str]:
+    """Return (pct_increase, money_increase, label) comparing first vs latest budget version."""
+    from budget_versioning import _parse_snapshot, get_budgets, get_versions
+    budgets = get_budgets(project_id)
+    if not budgets:
+        return None, None, ""
+    budget = budgets[0]
+    versions = get_versions(budget.id)
+    if len(versions) < 2:
+        return None, None, ""
+    latest = versions[0]
+    first = versions[-1]
+    first_items = _parse_snapshot(first.snapshot_json)
+    latest_items = _parse_snapshot(latest.snapshot_json)
+    first_total = sum(r["budgeted_amount"] for r in first_items)
+    latest_total = sum(r["budgeted_amount"] for r in latest_items)
+    if first_total == 0:
+        return None, None, ""
+    pct = ((latest_total - first_total) / first_total) * 100
+    money = latest_total - first_total
+    label = f"V{first.version_label} → V{latest.version_label}"
+    return round(pct, 1), round(money, 2), label
+
+
 def get_budget_increase_pct(project_id: int) -> tuple[float | None, str]:
     """Return (pct_increase, label) comparing first vs latest budget version for the project.
 
