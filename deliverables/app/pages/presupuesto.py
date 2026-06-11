@@ -1,8 +1,8 @@
-"""Presupuesto — 4-column read-only budget table + chart + approval flow."""
+"""Presupuesto / Budget — editable 4-column table + chart + approval flow."""
 import altair as alt
 import streamlit as st
 from auth import require_auth, send_budget_approval_email
-from budget import get_all_categories, get_budget_lines
+from budget import get_all_categories, get_budget_lines, update_budget_line
 from budget_versioning import (change_status, create_budget, create_version,
                                get_budgets, STATUS_LABELS_ES, STATUS_LABELS_EN)
 from expenses import get_line_spent
@@ -66,6 +66,7 @@ else:
     h5.markdown(f"**{_lbl_bal}**")
     st.divider()
 
+    pending_saves: list[tuple] = []   # (line_id, new_estimated, new_adjusted)
     grand_est = grand_adj = grand_pay = 0.0
 
     for top_code in sorted(groups.keys()):
@@ -75,18 +76,29 @@ else:
         for line in group_lines:
             estimated = float(line.budgeted_amount)
             co_stored = float(getattr(line, "change_order_amount", 0) or 0)
-            adjusted  = co_stored if co_stored > 0 else estimated
+            adj_default = co_stored if co_stored > 0 else estimated
             payments  = get_line_spent(line.id)
-            balance   = adjusted - payments
-
-            grand_est += estimated
-            grand_adj += adjusted
-            grand_pay += payments
 
             c1, c2, c3, c4, c5 = st.columns([3, 1.5, 1.5, 1.5, 1.5])
             c1.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{_cat_name(line.category_code)}")
-            c2.write(fmt_money(estimated))
-            c3.write(fmt_money(adjusted))
+
+            new_est = c2.number_input(
+                _lbl_est, value=estimated, min_value=0.0, step=1000.0,
+                key=f"_est_{line.id}", label_visibility="collapsed"
+            )
+            new_adj = c3.number_input(
+                _lbl_adj, value=adj_default, min_value=0.0, step=1000.0,
+                key=f"_adj_{line.id}", label_visibility="collapsed"
+            )
+
+            if new_est != estimated or new_adj != adj_default:
+                pending_saves.append((line.id, new_est, new_adj))
+
+            balance = new_adj - payments
+            grand_est += new_est
+            grand_adj += new_adj
+            grand_pay += payments
+
             c4.write(fmt_money(payments))
             c5.write(f":red[{fmt_money(balance)}]" if balance < 0 else fmt_money(balance))
 
@@ -129,11 +141,33 @@ else:
         )
         st.write("")
 
-    # ── Send for approval button ──────────────────────────────────────────────
+    # ── Action buttons ────────────────────────────────────────────────────────
     if not st.session_state.get("is_viewer", False):
+        _bc1, _bc2 = st.columns(2)
+
+        _draft_lbl = "💾 Guardar borrador" if _lang == "es" else "💾 Save draft"
+        if _bc1.button(_draft_lbl, use_container_width=True):
+            for _lid, _new_est, _new_adj in pending_saves:
+                update_budget_line(_lid, project_id, _new_est,
+                                   change_order_amount=_new_adj)
+            _budgets2 = get_budgets(project_id)
+            if not _budgets2:
+                create_budget(project_id, summary.name, user["id"])
+            else:
+                _b = _budgets2[0]
+                _lines_now = get_budget_lines(project_id)
+                _rows = [{"category_code": l.category_code, "description": l.description or "",
+                          "budgeted_amount": float(l.budgeted_amount), "room_id": l.room_id}
+                         for l in _lines_now]
+                create_version(_b.id, "minor",
+                               "Borrador guardado" if _lang == "es" else "Draft saved",
+                               _rows, user["id"])
+            st.success("✅ Guardado como borrador." if _lang == "es" else "✅ Saved as draft.")
+            st.rerun()
+
         _approval_lbl = "📤 Enviar para aprobación" if _lang == "es" else "📤 Send for approval"
         _approver_email = get_budget_approver_email()
-        if st.button(_approval_lbl, type="primary"):
+        if _bc2.button(_approval_lbl, use_container_width=True, type="primary"):
             if not _approver_email:
                 st.warning(
                     "No hay un aprobador configurado. Contacta al administrador."
@@ -141,11 +175,14 @@ else:
                     "No budget approver configured. Contact the administrator."
                 )
             else:
+                for _lid, _new_est, _new_adj in pending_saves:
+                    update_budget_line(_lid, project_id, _new_est,
+                                       change_order_amount=_new_adj)
                 _budgets3 = get_budgets(project_id)
-                _lines_now = get_budget_lines(project_id)
-                _rows = [{"category_code": l.category_code, "description": l.description or "",
-                           "budgeted_amount": float(l.budgeted_amount), "room_id": l.room_id}
-                          for l in _lines_now]
+                _lines_now2 = get_budget_lines(project_id)
+                _rows2 = [{"category_code": l.category_code, "description": l.description or "",
+                            "budgeted_amount": float(l.budgeted_amount), "room_id": l.room_id}
+                           for l in _lines_now2]
                 if not _budgets3:
                     _b3 = create_budget(project_id, summary.name, user["id"])
                     _b3_id = _b3.id
@@ -153,7 +190,7 @@ else:
                     _b3_id = _budgets3[0].id
                     create_version(_b3_id, "minor",
                                    "Enviado para aprobacion" if _lang == "es" else "Sent for approval",
-                                   _rows, user["id"])
+                                   _rows2, user["id"])
                 change_status(_b3_id, "review", user["id"],
                               "Enviado para aprobacion" if _lang == "es" else "Sent for approval")
                 _bv_list = get_budgets(project_id)
