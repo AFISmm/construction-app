@@ -216,9 +216,51 @@ def get_managed_users(user_id: int, all_users: list[dict]) -> list[dict]:
         return []
 
 
-def get_budget_approver_email() -> str | None:
-    """Return email of the designated budget approver, or None if not set."""
+# Modules that support approval workflow — (ES label, EN label)
+APPROVABLE_MODULES: dict[str, tuple[str, str]] = {
+    "presupuesto":  ("Presupuesto",            "Budget"),
+    "expenses":     ("Pagos",                  "Payments"),
+    "trazabilidad": ("Versiones de Presupuesto", "Budget Versions"),
+}
+
+
+def get_all_approval_modules() -> dict[int, list[str]]:
+    """Return {user_id: [module_keys]} for all users with approval permissions."""
+    result: dict[int, list[str]] = {}
     with get_session() as session:
+        for perm in session.query(UserPermission).all():
+            if perm.approval_modules:
+                modules = json.loads(perm.approval_modules)
+                if modules:
+                    result[perm.user_id] = modules
+    return result
+
+
+def save_approval_modules(user_approval_map: dict[int, list[str]]) -> None:
+    """Save approval module rights for each user. {user_id: [module_keys]}"""
+    with get_session() as session:
+        for user_id, modules in user_approval_map.items():
+            perm = session.query(UserPermission).filter_by(user_id=user_id).first()
+            if perm:
+                perm.approval_modules = json.dumps(modules)
+                # Keep is_budget_approver in sync for backward compat
+                perm.is_budget_approver = "presupuesto" in modules
+
+
+def get_budget_approver_email() -> str | None:
+    """Return email of the budget approver (checks approval_modules first, falls back to is_budget_approver)."""
+    with get_session() as session:
+        # Check new approval_modules field first
+        for perm in session.query(UserPermission).all():
+            if perm.approval_modules:
+                try:
+                    if "presupuesto" in json.loads(perm.approval_modules):
+                        u = session.get(User, perm.user_id)
+                        if u:
+                            return u.email
+                except Exception:
+                    pass
+        # Fall back to legacy is_budget_approver flag
         perm = session.query(UserPermission).filter_by(is_budget_approver=True).first()
         if not perm:
             return None

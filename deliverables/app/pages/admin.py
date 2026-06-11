@@ -7,9 +7,9 @@ from auth import require_auth, set_password
 from db import ExtendedProfile, User, UserPermission, get_session
 from i18n import t
 from permissions import (
-    ALL_ROLES, EXTERNAL_ROLES, ROLE_LABELS_EN, ROLE_LABELS_ES,
-    VIEWER_DEFAULT_PAGES, get_all_users_with_permissions, get_budget_approver_email,
-    get_pending_users, is_admin, is_super_admin, save_permission, set_budget_approver,
+    ALL_ROLES, APPROVABLE_MODULES, EXTERNAL_ROLES, ROLE_LABELS_EN, ROLE_LABELS_ES,
+    VIEWER_DEFAULT_PAGES, get_all_approval_modules, get_all_users_with_permissions,
+    get_pending_users, is_admin, is_super_admin, save_approval_modules, save_permission,
 )
 from projects import get_user_projects
 
@@ -62,36 +62,59 @@ else:
 st.title(t("nav.admin"))
 st.divider()
 
-# ── Aprobador de presupuestos ─────────────────────────────────────────────────
+# ── Aprobadores por módulo ────────────────────────────────────────────────────
 if _is_super:
-    _approver_title = "Aprobador de Presupuestos" if _lang == "es" else "Budget Approver"
+    _approver_title = "Aprobadores por módulo" if _lang == "es" else "Module Approvers"
     st.subheader(f"✅ {_approver_title}")
-    _current_approver = get_budget_approver_email()
-    _approver_lbl = f"**{'Aprobador actual' if _lang == 'es' else 'Current approver'}:** {_current_approver or ('No asignado' if _lang == 'es' else 'Not assigned')}"
-    st.markdown(_approver_lbl)
-
-    # Options: None + all non-super-admin users
-    _user_opts = {("Sin aprobador" if _lang == "es" else "No approver"): None}
-    for _au in all_users:
-        if not is_super_admin(_au["id"]):
-            _user_opts[_au["email"]] = _au["id"]
-
-    _current_key = _current_approver if _current_approver in _user_opts else list(_user_opts.keys())[0]
-    _sel_approver_lbl = st.selectbox(
-        "Asignar aprobador" if _lang == "es" else "Assign approver",
-        list(_user_opts.keys()),
-        index=list(_user_opts.keys()).index(_current_key) if _current_key in _user_opts else 0,
-        key="_approver_sel",
-    )
-    if st.button("💾 " + ("Guardar aprobador" if _lang == "es" else "Save approver"), key="_save_approver"):
-        set_budget_approver(_user_opts[_sel_approver_lbl])
-        st.success("Aprobador actualizado." if _lang == "es" else "Approver updated.")
-        st.rerun()
     st.caption(
-        "Solo este usuario recibirá notificaciones de aprobación de presupuesto y podrá aprobar o rechazar versiones."
+        "Selecciona qué usuarios pueden aprobar cambios en cada módulo."
         if _lang == "es" else
-        "Only this user will receive budget approval notifications and can approve or reject versions."
+        "Select which users can approve changes in each module."
     )
+
+    # Non-admin users only
+    _approvable_users = [u for u in all_users if u["role"] not in ("admin", "super_admin",
+                         "pending", "pending_extended", "rejected")]
+
+    if not _approvable_users:
+        st.info("No hay usuarios con roles activos para asignar como aprobadores."
+                if _lang == "es" else "No active users available to assign as approvers.")
+    else:
+        _current_approvals = get_all_approval_modules()  # {user_id: [modules]}
+        _mod_keys = list(APPROVABLE_MODULES.keys())
+        _mod_labels = [APPROVABLE_MODULES[k][0 if _lang == "es" else 1] for k in _mod_keys]
+
+        # ── Table header ──────────────────────────────────────────────────────
+        _hcols = st.columns([3] + [1.2] * len(_mod_keys))
+        _hcols[0].markdown(f"**{'Usuario' if _lang == 'es' else 'User'}**")
+        for _i, _lbl in enumerate(_mod_labels):
+            _hcols[_i + 1].markdown(f"**{_lbl}**")
+        st.divider()
+
+        # ── User rows with checkboxes ─────────────────────────────────────────
+        _new_approvals: dict[int, list[str]] = {}
+        for _au in _approvable_users:
+            _user_current = _current_approvals.get(_au["id"], [])
+            _rcols = st.columns([3] + [1.2] * len(_mod_keys))
+            _rcols[0].write(_au["email"])
+            _selected_mods = []
+            for _i, _mkey in enumerate(_mod_keys):
+                _checked = _mkey in _user_current
+                if _rcols[_i + 1].checkbox(
+                    _mkey, value=_checked,
+                    key=f"appr_{_au['id']}_{_mkey}",
+                    label_visibility="collapsed"
+                ):
+                    _selected_mods.append(_mkey)
+            _new_approvals[_au["id"]] = _selected_mods
+
+        st.write("")
+        if st.button("💾 " + ("Guardar aprobadores" if _lang == "es" else "Save approvers"),
+                     key="_save_approvers"):
+            save_approval_modules(_new_approvals)
+            st.success("Aprobadores actualizados." if _lang == "es" else "Approvers updated.")
+            st.rerun()
+
     st.divider()
 
 # ── Solicitudes pendientes de aprobación ──────────────────────────────────────
