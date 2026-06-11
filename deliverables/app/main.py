@@ -99,7 +99,6 @@ def _sidebar(user: dict) -> None:
         if "trazabilidad" in allowed: st.page_link("pages/trazabilidad.py", label=t("nav.trazabilidad"))
         if "timeline"     in allowed: st.page_link("pages/timeline.py",     label=t("nav.timeline"))
         if "proveedores"  in allowed: st.page_link("pages/proveedores.py",  label=t("nav.proveedores"))
-        if "contratos"    in allowed: st.page_link("pages/contratos.py",    label=t("nav.contratos"))
         if "account"      in allowed: st.page_link("pages/account.py",      label=t("nav.account"))
         if "admin" in allowed:
             pending = get_pending_count()
@@ -414,7 +413,6 @@ def main() -> None:
         "trazabilidad": st.Page("pages/trazabilidad.py", title=t("nav.trazabilidad")),
         "timeline":     st.Page("pages/timeline.py",     title=t("nav.timeline")),
         "proveedores":  st.Page("pages/proveedores.py",  title=t("nav.proveedores")),
-        "contratos":    st.Page("pages/contratos.py",    title=t("nav.contratos")),
         "account":      st.Page("pages/account.py",      title=t("nav.account")),
         "admin":        st.Page("pages/admin.py",        title=t("nav.admin")),
     }

@@ -10,7 +10,7 @@ from db import Project, User, UserPermission, get_session
 
 ALL_PAGES = [
     "dashboard", "presupuesto", "expenses", "trazabilidad", "timeline",
-    "proveedores", "contratos", "account",
+    "proveedores", "account",
 ]
 
 # Roles del sistema
@@ -56,7 +56,6 @@ PAGE_FILES = {
     "trazabilidad": "pages/trazabilidad.py",
     "timeline":     "pages/timeline.py",
     "proveedores":  "pages/proveedores.py",
-    "contratos":    "pages/contratos.py",
     "account":      "pages/account.py",
     "admin":        "pages/admin.py",
 }

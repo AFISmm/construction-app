@@ -1,4 +1,4 @@
-"""Gastos / Expenses — same columns as budget table plus vendor."""
+"""Pagos / Payments — 4 columns: Description, Vendor, Payment, Date."""
 from datetime import date
 
 import streamlit as st
@@ -28,75 +28,63 @@ if not lines:
 categories = get_all_categories()
 
 
-def _translated_cat(code: str) -> str:
+def _cat_name(code: str) -> str:
     key = f"cat.{code}"
     translated = t(key)
     return translated if translated != key else next(
         (c.name for c in categories if c.code == code), code)
 
 
-cat_names = {c.code: _translated_cat(c.code) for c in categories}
-
 groups: dict[str, list] = {}
 for line in lines:
     top = line.category_code.split(".")[0]
     groups.setdefault(top, []).append(line)
 
-# ── Column labels ─────────────────────────────────────────────────────────────
-_lbl_desc       = t("expense.description_label")
-_lbl_vendor     = t("expense.vendor_label")
-_lbl_budget     = "Presupuesto" if _lang == "es" else "Budget"
-_lbl_co         = "Change Order"
-_lbl_contracted = "Valor contratado" if _lang == "es" else "Contracted value"
-_lbl_total      = "Total presupuesto" if _lang == "es" else "Total budget"
-_lbl_balance    = "Balance Due"
+# ── Column labels ──────────────────────────────────────────────────────────────
+_lbl_desc   = t("expense.description_label")
+_lbl_vendor = t("expense.vendor_label")
+_lbl_pay    = "Pago" if _lang == "es" else "Payment"
+_lbl_date   = t("expense.date_label")
 
-# ── Table header ──────────────────────────────────────────────────────────────
-h1, h2, h3, h4, h5, h6, h7, h8 = st.columns([2.5, 1.5, 1.2, 1.2, 1.2, 1.2, 1.2, 0.8])
+# ── Table header ───────────────────────────────────────────────────────────────
+h1, h2, h3, h4, h5 = st.columns([2.5, 1.8, 1.2, 1.2, 0.6])
 h1.markdown(f"**{_lbl_desc}**")
 h2.markdown(f"**{_lbl_vendor}**")
-h3.markdown(f"**{_lbl_budget}**")
-h4.markdown(f"**{_lbl_co}**")
-h5.markdown(f"**{_lbl_contracted}**")
-h6.markdown(f"**{_lbl_total}**")
-h7.markdown(f"**{_lbl_balance}**")
-h8.markdown("**+**")
+h3.markdown(f"**{_lbl_pay}**")
+h4.markdown(f"**{_lbl_date}**")
+h5.markdown("**+**")
 st.divider()
 
-grand_budget = 0.0
 grand_spent = 0.0
 
 for top_code in sorted(groups.keys()):
     group_lines = groups[top_code]
-    cat_label = cat_names.get(top_code, top_code)
-    st.markdown(f"**{top_code} — {cat_label}**")
+    cat_label = _cat_name(top_code)
 
-    sub_budget = 0.0
-    sub_spent = 0.0
+    # Sum all payments for this top-level category
+    cat_total_spent = sum(get_line_spent(line.id) for line in group_lines)
+    grand_spent += cat_total_spent
+
+    # Category header row — shows total payments in the Payment column
+    r1, r2, r3, r4, r5 = st.columns([2.5, 1.8, 1.2, 1.2, 0.6])
+    r1.markdown(f"**{top_code} — {cat_label}**")
+    r2.markdown("—")
+    r3.markdown(f"**{fmt_money(cat_total_spent)}**")
+    r4.markdown("—")
+    r5.markdown("")
 
     for line in group_lines:
-        spent = get_line_spent(line.id)
-        budgeted = float(line.budgeted_amount)
-        change_order = float(getattr(line, "change_order_amount", 0) or 0)
-        contracted = float(getattr(line, "contracted_amount", 0) or 0)
-        total_budget = budgeted + change_order
-        balance_due = total_budget - spent
+        line_spent = get_line_spent(line.id)
 
-        sub_budget += budgeted
-        sub_spent += spent
-
-        # Budget line row
-        c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([2.5, 1.5, 1.2, 1.2, 1.2, 1.2, 1.2, 0.8])
-        c1.write(_translated_cat(line.category_code))
+        # Budget line row — shows payments total for this line
+        c1, c2, c3, c4, c5 = st.columns([2.5, 1.8, 1.2, 1.2, 0.6])
+        c1.write(f"&nbsp;&nbsp;&nbsp;&nbsp;{_cat_name(line.category_code)}")
         c2.write("—")
-        c3.write(fmt_money(budgeted))
-        c4.write(fmt_money(change_order))
-        c5.write(fmt_money(contracted))
-        c6.write(fmt_money(total_budget))
-        c7.write(f":red[{fmt_money(balance_due)}]" if balance_due < 0 else fmt_money(balance_due))
+        c3.write(fmt_money(line_spent))
+        c4.write("—")
 
         add_key = f"_add_{line.id}"
-        if not _read_only and c8.button("＋", key=f"btn_{line.id}", help=t("expense.add_expense")):
+        if not _read_only and c5.button("＋", key=f"btn_{line.id}", help=t("expense.add_expense")):
             st.session_state[add_key] = not st.session_state.get(add_key, False)
 
         # Inline add expense form
@@ -119,54 +107,25 @@ for top_code in sorted(groups.keys()):
                     st.session_state[add_key] = False
                     st.rerun()
 
-        # Existing expense sub-rows
+        # Existing expense rows
         exps = get_expenses(project_id, line.id)
         for exp in exps:
-            e1, e2, e3, e4, e5, e6, e7, e8 = st.columns([2.5, 1.5, 1.2, 1.2, 1.2, 1.2, 1.2, 0.8])
-            e1.caption(f"  ↳ {exp.description or _translated_cat(line.category_code)}")
+            e1, e2, e3, e4, e5 = st.columns([2.5, 1.8, 1.2, 1.2, 0.6])
+            e1.caption(f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↳ {exp.description or _cat_name(line.category_code)}")
             e2.caption(exp.vendor or "—")
-            e3.caption("—")
-            e4.caption("—")
-            e5.caption(fmt_money(exp.amount))
-            e6.caption("—")
-            e7.caption(str(exp.expense_date))
-            if not _read_only and e8.button("x", key=f"del_{exp.id}", help=t("common.delete")):
+            e3.caption(fmt_money(exp.amount))
+            e4.caption(str(exp.expense_date))
+            if not _read_only and e5.button("✕", key=f"del_{exp.id}", help=t("common.delete")):
                 delete_expense(exp.id, project_id)
                 st.rerun()
 
-    # Subtotal
-    sub_total   = sum(float(l.budgeted_amount) + float(getattr(l, "change_order_amount", 0) or 0)
-                      for l in group_lines)
-    sub_balance = sub_total - sub_spent
-    st.markdown(
-        f"<div style='background:#f0f2f6;padding:4px 8px;border-radius:4px;font-size:0.85em;'>"
-        f"<b>Subtotal {top_code}:</b> &nbsp; {_lbl_budget}: <b>{fmt_money(sub_budget)}</b>"
-        f" &nbsp;|&nbsp; Total: <b>{fmt_money(sub_total)}</b>"
-        f" &nbsp;|&nbsp; Balance Due: "
-        f"<b style='color:{'red' if sub_balance < 0 else 'green'};'>{fmt_money(sub_balance)}</b>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
     st.write("")
 
-    grand_budget += sub_budget
-    grand_spent += sub_spent
-
-# ── Grand total ───────────────────────────────────────────────────────────────
+# ── Grand total ────────────────────────────────────────────────────────────────
 st.divider()
-grand_total = sum(
-    float(l.budgeted_amount) + float(getattr(l, "change_order_amount", 0) or 0)
-    for l in lines
-)
-grand_balance = grand_total - grand_spent
-t1, t2, t3 = st.columns(3)
-t1.metric(t("project.total_budget"),  fmt_money(grand_budget))
-t2.metric(t("project.total_spent"),   fmt_money(grand_spent))
-t3.metric("Balance Due",              fmt_money(grand_balance),
-          delta=fmt_money(grand_balance),
-          delta_color="normal" if grand_balance >= 0 else "inverse")
+st.metric(t("project.total_spent"), fmt_money(grand_spent))
 
-# ── Export / Import bar ───────────────────────────────────────────────────────
+# ── Export / Import bar ────────────────────────────────────────────────────────
 if not _read_only:
     st.divider()
     import io as _io
@@ -177,7 +136,7 @@ if not _read_only:
         for exp in get_expenses(project_id, line.id):
             all_exps.append({
                 "Categoria" if _lang == "es" else "Category":
-                    _translated_cat(line.category_code),
+                    _cat_name(line.category_code),
                 "Proveedor" if _lang == "es" else "Vendor":
                     exp.vendor or "—",
                 "Descripcion" if _lang == "es" else "Description":
@@ -194,14 +153,14 @@ if not _read_only:
     if not df_exp.empty:
         bc1.download_button(
             "📥 CSV", df_exp.to_csv(index=False).encode("utf-8-sig"),
-            file_name="gastos.csv", mime="text/csv", use_container_width=True,
+            file_name="pagos.csv", mime="text/csv", use_container_width=True,
         )
         _buf_xl = _io.BytesIO()
         with _pd.ExcelWriter(_buf_xl, engine="openpyxl") as _wr:
-            df_exp.to_excel(_wr, index=False, sheet_name="Gastos")
+            df_exp.to_excel(_wr, index=False, sheet_name="Pagos")
         bc2.download_button(
             "📥 Excel", _buf_xl.getvalue(),
-            file_name="gastos.xlsx",
+            file_name="pagos.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
         )
@@ -209,10 +168,10 @@ if not _read_only:
             from reports import export_pdf as _epdf
             from projects import get_project_summary as _gps
             _summ = _gps(project_id)
-            _pdf = _epdf(project_id, _summ.name if _summ else "Gastos",
+            _pdf = _epdf(project_id, _summ.name if _summ else "Pagos",
                          _summ.currency if _summ else "")
             bc3.download_button(
-                "📥 PDF", _pdf, file_name="gastos.pdf",
+                "📥 PDF", _pdf, file_name="pagos.pdf",
                 mime="application/pdf", use_container_width=True,
             )
         except Exception:
@@ -225,7 +184,7 @@ if not _read_only:
                   key="_imp_btn", use_container_width=True):
         st.session_state[_import_key] = not st.session_state.get(_import_key, False)
 
-# ── Import panel ──────────────────────────────────────────────────────────────
+# ── Import panel ───────────────────────────────────────────────────────────────
 if not _read_only and st.session_state.get("_show_import_expenses", False):
     st.divider()
     with st.container():
@@ -270,7 +229,7 @@ if not _read_only and st.session_state.get("_show_import_expenses", False):
                     st.dataframe(df_up.head(5), use_container_width=True)
                     bl_map = {bl.category_code: bl.id for bl in lines}
 
-                    if st.button("Import expenses" if _lang == "en" else "Importar gastos",
+                    if st.button("Import payments" if _lang == "en" else "Importar pagos",
                                  key="_exp_import_btn"):
                         imported = 0
                         errors = []
@@ -279,8 +238,8 @@ if not _read_only and st.session_state.get("_show_import_expenses", False):
                                 amt = float(str(row[found["amount"]]).replace(",", "").replace("$", ""))
                                 if amt <= 0:
                                     continue
-                                desc    = str(row.get(found.get("description", ""), "")).strip() or "—"
-                                vendor  = str(row.get(found.get("vendor", ""), "")).strip() or ""
+                                desc     = str(row.get(found.get("description", ""), "")).strip() or "—"
+                                vendor   = str(row.get(found.get("vendor", ""), "")).strip() or ""
                                 cat_code = str(row.get(found.get("category_code", ""), "")).strip()
                                 raw_date = row.get(found.get("date", ""), None)
                                 try:
@@ -302,7 +261,7 @@ if not _read_only and st.session_state.get("_show_import_expenses", False):
 
                         if imported:
                             st.success(f"{'Imported' if _lang == 'en' else 'Importados'}: {imported} "
-                                       f"{'expenses' if _lang == 'en' else 'gastos'}")
+                                       f"{'payments' if _lang == 'en' else 'pagos'}")
                             st.rerun()
                         if errors:
                             with st.expander(f"{'Warnings' if _lang == 'en' else 'Advertencias'} "
