@@ -29,16 +29,46 @@ st.markdown(
 
 st.divider()
 
-# ── Summary metrics ────────────────────────────────────────────────────────────
-increase_pct, increase_money, increase_label = get_budget_increase(project_id)
+# ── Column labels (match the table below) ─────────────────────────────────────
+_lbl_cat = t("report.category_col")
+_lbl_est = "Presupuesto Estimado"    if _lang == "es" else "Estimated Budget"
+_lbl_adj = "Presupuesto Ajustado"    if _lang == "es" else "Adjusted Budget"
+_lbl_pay = "Pagos al Día"            if _lang == "es" else "Payments to Date"
+_lbl_bal = "Balance del Presupuesto" if _lang == "es" else "Budget Balance"
 
+categories = get_all_categories()
+lines = get_budget_lines(project_id)
+
+
+def _cat_name(code: str) -> str:
+    key = f"cat.{code}"
+    translated = t(key)
+    return translated if translated != key else next(
+        (c.name for c in categories if c.code == code), code)
+
+
+# ── Pre-calculate table totals so metrics match the table exactly ──────────────
+_line_data: dict[int, tuple[float, float, float]] = {}  # line.id → (est, adj, pay)
+grand_est = grand_adj = grand_pay = 0.0
+for line in lines:
+    estimated = float(line.budgeted_amount)
+    co_stored = float(getattr(line, "change_order_amount", 0) or 0)
+    adjusted  = co_stored if co_stored > 0 else estimated
+    payments  = get_line_spent(line.id)
+    _line_data[line.id] = (estimated, adjusted, payments)
+    grand_est += estimated
+    grand_adj += adjusted
+    grand_pay += payments
+
+# ── Summary metrics — same values and labels as table columns ─────────────────
 col1, col2, col3 = st.columns(3)
-col1.metric(t("project.total_budget"), fmt_money(summary.total_budgeted))
-col2.metric(t("project.total_spent"),  fmt_money(summary.total_spent))
-col3.metric(t("project.balance"),      fmt_money(summary.balance))
+col1.metric(_lbl_est, fmt_money(grand_est))
+col2.metric(_lbl_adj, fmt_money(grand_adj))
+col3.metric(_lbl_pay, fmt_money(grand_pay))
 
 st.write("")
 
+increase_pct, increase_money, increase_label = get_budget_increase(project_id)
 lbl_increase = "Aumento presupuestal" if _lang == "es" else "Budget increase"
 col4, col5 = st.columns(2)
 if increase_money is not None:
@@ -52,24 +82,6 @@ else:
 st.divider()
 
 # ── 4-column read-only table ───────────────────────────────────────────────────
-_lbl_cat = t("report.category_col")
-_lbl_est = "Presupuesto Estimado"  if _lang == "es" else "Estimated Budget"
-_lbl_adj = "Presupuesto Ajustado"  if _lang == "es" else "Adjusted Budget"
-_lbl_pay = "Pagos al Día"          if _lang == "es" else "Payments to Date"
-_lbl_bal = "Balance del Presupuesto" if _lang == "es" else "Budget Balance"
-
-categories = get_all_categories()
-
-
-def _cat_name(code: str) -> str:
-    key = f"cat.{code}"
-    translated = t(key)
-    return translated if translated != key else next(
-        (c.name for c in categories if c.code == code), code)
-
-
-lines = get_budget_lines(project_id)
-
 if not lines:
     st.info(t("common.no_data"))
 else:
@@ -87,22 +99,13 @@ else:
     h5.markdown(f"**{_lbl_bal}**")
     st.divider()
 
-    grand_est = grand_adj = grand_pay = 0.0
-
     for top_code in sorted(groups.keys()):
         group_lines = groups[top_code]
         st.markdown(f"**{top_code} — {_cat_name(top_code)}**")
 
         for line in group_lines:
-            estimated  = float(line.budgeted_amount)
-            co_stored  = float(getattr(line, "change_order_amount", 0) or 0)
-            adjusted   = co_stored if co_stored > 0 else estimated
-            payments   = get_line_spent(line.id)
-            balance    = adjusted - payments
-
-            grand_est += estimated
-            grand_adj += adjusted
-            grand_pay += payments
+            estimated, adjusted, payments = _line_data[line.id]
+            balance = adjusted - payments
 
             c1, c2, c3, c4, c5 = st.columns([3, 1.5, 1.5, 1.5, 1.5])
             c1.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{_cat_name(line.category_code)}")
