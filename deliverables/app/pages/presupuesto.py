@@ -86,11 +86,11 @@ else:
 
             if not _read_only:
                 new_est = c2.number_input(
-                    "", value=estimated, min_value=0.0, step=1000.0,
+                    _lbl_est, value=estimated, min_value=0.0, step=1000.0,
                     key=f"_est_{line.id}", label_visibility="collapsed"
                 )
                 new_adj = c3.number_input(
-                    "", value=adj_default, min_value=0.0, step=1000.0,
+                    _lbl_adj, value=adj_default, min_value=0.0, step=1000.0,
                     key=f"_adj_{line.id}", label_visibility="collapsed"
                 )
                 if new_est != estimated or new_adj != adj_default:
