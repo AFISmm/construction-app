@@ -35,7 +35,7 @@
   "nav.dashboard": "Dashboard",
   "nav.contratos": "Contracts",
   "nav.budget": "Budget",
-  "nav.expenses": "Expenses",
+  "nav.expenses": "Payments",
   "nav.import": "Import",
   "nav.proveedores": "Vendors",
   "nav.rooms": "Rooms",
@@ -111,7 +111,7 @@
   "budget.over_budget_warning": "This category exceeds budget",
   "budget.total_row": "Total",
 
-  "expense.title": "Expenses",
+  "expense.title": "Payments",
   "expense.add_expense": "Record expense",
   "expense.vendor_label": "Vendor",
   "expense.description_label": "Description",

@@ -35,7 +35,7 @@
   "nav.dashboard": "Tablero",
   "nav.contratos": "Contratos",
   "nav.budget": "Presupuesto",
-  "nav.expenses": "Gastos",
+  "nav.expenses": "Pagos",
   "nav.import": "Importar",
   "nav.proveedores": "Proveedores",
   "nav.rooms": "Habitaciones",
@@ -111,7 +111,7 @@
   "budget.over_budget_warning": "Esta categoria supera el presupuesto",
   "budget.total_row": "Total",
 
-  "expense.title": "Gastos",
+  "expense.title": "Pagos",
   "expense.add_expense": "Registrar gasto",
   "expense.vendor_label": "Proveedor",
   "expense.description_label": "Descripcion",

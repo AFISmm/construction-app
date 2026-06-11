@@ -1,4 +1,4 @@
-"""Presupuesto — full budget table with Change Order, Valor Contratado, Total, Balance Due."""
+"""Presupuesto — editable 4-column budget table + chart + approval flow."""
 import altair as alt
 import streamlit as st
 from auth import require_auth, send_budget_approval_email
@@ -33,12 +33,11 @@ if summary:
 _read_only = st.session_state.get("is_viewer", False)
 
 # ── Column labels ─────────────────────────────────────────────────────────────
-_lbl_cat        = t("report.category_col")
-_lbl_budget     = "Presupuesto" if _lang == "es" else "Budget"
-_lbl_co         = "Change Order"
-_lbl_contracted = "Valor contratado" if _lang == "es" else "Contracted value"
-_lbl_total      = "Total presupuesto" if _lang == "es" else "Total budget"
-_lbl_balance    = "Balance Due"
+_lbl_cat = t("report.category_col")
+_lbl_est = "Presupuesto Estimado"    if _lang == "es" else "Estimated Budget"
+_lbl_adj = "Presupuesto Ajustado"    if _lang == "es" else "Adjusted Budget"
+_lbl_pay = "Pagos al Día"            if _lang == "es" else "Payments to Date"
+_lbl_bal = "Balance del Presupuesto" if _lang == "es" else "Budget Balance"
 
 categories = get_all_categories()
 
@@ -60,62 +59,75 @@ else:
         top = line.category_code.split(".")[0]
         groups.setdefault(top, []).append(line)
 
-    # Header
-    hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([3, 1.5, 1.5, 1.5, 1.5, 1.5])
-    hc1.markdown(f"**{_lbl_cat}**")
-    hc2.markdown(f"**{_lbl_budget}**")
-    hc3.markdown(f"**{_lbl_co}**")
-    hc4.markdown(f"**{_lbl_contracted}**")
-    hc5.markdown(f"**{_lbl_total}**")
-    hc6.markdown(f"**{_lbl_balance}**")
+    # Header row
+    h1, h2, h3, h4, h5 = st.columns([3, 1.5, 1.5, 1.5, 1.5])
+    h1.markdown(f"**{_lbl_cat}**")
+    h2.markdown(f"**{_lbl_est}**")
+    h3.markdown(f"**{_lbl_adj}**")
+    h4.markdown(f"**{_lbl_pay}**")
+    h5.markdown(f"**{_lbl_bal}**")
     st.divider()
 
-    pending_saves: list[tuple] = []
+    pending_saves: list[tuple] = []   # (line_id, new_estimated, new_adjusted)
+    grand_est = grand_adj = grand_pay = 0.0
 
     for top_code in sorted(groups.keys()):
         group_lines = groups[top_code]
-        cat_label = _cat_name(top_code)
-        st.markdown(f"**{top_code} — {cat_label}**")
+        st.markdown(f"**{top_code} — {_cat_name(top_code)}**")
 
         for line in group_lines:
-            spent = get_line_spent(line.id)
-            budgeted = float(line.budgeted_amount)
-            change_order = float(getattr(line, "change_order_amount", 0) or 0)
-            contracted = float(getattr(line, "contracted_amount", 0) or 0)
+            estimated = float(line.budgeted_amount)
+            co_stored = float(getattr(line, "change_order_amount", 0) or 0)
+            adj_default = co_stored if co_stored > 0 else estimated
+            payments  = get_line_spent(line.id)
 
-            c1, c2, c3, c4, c5, c6 = st.columns([3, 1.5, 1.5, 1.5, 1.5, 1.5])
+            c1, c2, c3, c4, c5 = st.columns([3, 1.5, 1.5, 1.5, 1.5])
             c1.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{_cat_name(line.category_code)}")
 
             if not _read_only:
-                new_budgeted = c2.number_input(
-                    "", value=budgeted, min_value=0.0, step=1000.0,
-                    key=f"_pres_bud_{line.id}", label_visibility="collapsed"
+                new_est = c2.number_input(
+                    "", value=estimated, min_value=0.0, step=1000.0,
+                    key=f"_est_{line.id}", label_visibility="collapsed"
                 )
-                new_co = c3.number_input(
-                    "", value=change_order, min_value=0.0, step=1000.0,
-                    key=f"_pres_co_{line.id}", label_visibility="collapsed"
+                new_adj = c3.number_input(
+                    "", value=adj_default, min_value=0.0, step=1000.0,
+                    key=f"_adj_{line.id}", label_visibility="collapsed"
                 )
-                new_contracted = c4.number_input(
-                    "", value=contracted, min_value=0.0, step=1000.0,
-                    key=f"_pres_cnt_{line.id}", label_visibility="collapsed"
-                )
-                if (new_budgeted != budgeted or new_co != change_order
-                        or new_contracted != contracted):
-                    pending_saves.append((line.id, new_budgeted, new_co, new_contracted))
-                display_total = new_budgeted + new_co
-                display_balance = display_total - spent
+                if new_est != estimated or new_adj != adj_default:
+                    pending_saves.append((line.id, new_est, new_adj))
+                display_adj = new_adj
+                display_est = new_est
             else:
-                c2.write(fmt_money(budgeted))
-                c3.write(fmt_money(change_order))
-                c4.write(fmt_money(contracted))
-                display_total = budgeted + change_order
-                display_balance = display_total - spent
+                c2.write(fmt_money(estimated))
+                c3.write(fmt_money(adj_default))
+                display_adj = adj_default
+                display_est = estimated
 
-            c5.write(fmt_money(display_total))
-            c6.write(f":red[{fmt_money(display_balance)}]"
-                     if display_balance < 0 else fmt_money(display_balance))
+            balance = display_adj - payments
+            grand_est += display_est
+            grand_adj += display_adj
+            grand_pay += payments
+
+            c4.write(fmt_money(payments))
+            c5.write(f":red[{fmt_money(balance)}]" if balance < 0 else fmt_money(balance))
 
         st.write("")
+
+    # Grand total row
+    grand_bal = grand_adj - grand_pay
+    st.divider()
+    g1, g2, g3, g4, g5 = st.columns([3, 1.5, 1.5, 1.5, 1.5])
+    g1.markdown("**Total**")
+    g2.markdown(f"**{fmt_money(grand_est)}**")
+    g3.markdown(f"**{fmt_money(grand_adj)}**")
+    g4.markdown(f"**{fmt_money(grand_pay)}**")
+    bal_color = "red" if grand_bal < 0 else "green"
+    g5.markdown(
+        f'**<span style="color:{bal_color};">{fmt_money(grand_bal)}</span>**',
+        unsafe_allow_html=True,
+    )
+
+    st.write("")
 
     # ── Budget status badge ───────────────────────────────────────────────────
     _SL = STATUS_LABELS_ES if _lang == "es" else STATUS_LABELS_EN
@@ -144,9 +156,9 @@ else:
 
         _draft_lbl = "💾 Guardar borrador" if _lang == "es" else "💾 Save draft"
         if _bc1.button(_draft_lbl, use_container_width=True):
-            for _lid, _amt, _co, _cnt in pending_saves:
-                update_budget_line(_lid, project_id, _amt,
-                                   change_order_amount=_co, contracted_amount=_cnt)
+            for _lid, _new_est, _new_adj in pending_saves:
+                update_budget_line(_lid, project_id, _new_est,
+                                   change_order_amount=_new_adj)
             _budgets2 = get_budgets(project_id)
             if not _budgets2:
                 create_budget(project_id, summary.name, user["id"])
@@ -172,9 +184,9 @@ else:
                     "No budget approver configured. Contact the administrator."
                 )
             else:
-                for _lid, _amt, _co, _cnt in pending_saves:
-                    update_budget_line(_lid, project_id, _amt,
-                                       change_order_amount=_co, contracted_amount=_cnt)
+                for _lid, _new_est, _new_adj in pending_saves:
+                    update_budget_line(_lid, project_id, _new_est,
+                                       change_order_amount=_new_adj)
                 _budgets3 = get_budgets(project_id)
                 _lines_now2 = get_budget_lines(project_id)
                 _rows2 = [{"category_code": l.category_code, "description": l.description or "",
