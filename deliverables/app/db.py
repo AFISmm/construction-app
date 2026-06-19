@@ -65,7 +65,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     otp_tokens: Mapped[List["OtpToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    projects: Mapped[List["Project"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    projects: Mapped[List["Project"]] = relationship(back_populates="user", cascade="all, delete-orphan", foreign_keys="[Project.user_id]")
 
 
 class OtpToken(Base):
