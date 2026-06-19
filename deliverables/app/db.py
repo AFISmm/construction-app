@@ -94,6 +94,7 @@ class Project(Base):
     project_type: Mapped[str] = mapped_column(String(20), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
     currency: Mapped[str] = mapped_column(String(3), default="COP", nullable=False)
+    group_name: Mapped[Optional[str]] = mapped_column(String(200))
     admin_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
@@ -395,6 +396,7 @@ def _run_migrations() -> None:
     """Add new columns to existing tables that SQLAlchemy create_all won't touch."""
     from sqlalchemy import text
     migrations = [
+        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS group_name VARCHAR(200)",
         """CREATE TABLE IF NOT EXISTS vendors (
             id SERIAL PRIMARY KEY,
             project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,

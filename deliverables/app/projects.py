@@ -99,6 +99,20 @@ def _add_project_dialog(user_id: int) -> None:
     from db import User, UserPermission, get_session as _gs
     import json as _json
 
+    # --- Group ---
+    _existing_groups = []
+    with __import__("db").get_session() as _sg:
+        rows = _sg.execute(__import__("sqlalchemy").text(
+            "SELECT DISTINCT group_name FROM projects WHERE group_name IS NOT NULL ORDER BY group_name"
+        )).fetchall()
+        _existing_groups = [r[0] for r in rows]
+    group_opts = _existing_groups + ["➕ Nuevo grupo..."]
+    _sel_grp = st.selectbox("Grupo *", group_opts, key="_np_grp")
+    if _sel_grp == "➕ Nuevo grupo...":
+        group_name = st.text_input("Nombre del nuevo grupo *", placeholder="Ej: Maria González")
+    else:
+        group_name = _sel_grp
+
     # --- Project name ---
     name = st.text_input("Nombre del proyecto *", placeholder="Ej: Edificio Central")
 
@@ -144,6 +158,8 @@ def _add_project_dialog(user_id: int) -> None:
 
     if col_save.button("💾 Guardar", type="primary", use_container_width=True, key="_np_save"):
         errors: list[str] = []
+        if not group_name.strip():
+            errors.append("⛔ El grupo es obligatorio.")
         if not name.strip():
             errors.append("⛔ El nombre del proyecto es obligatorio.")
         if admin_email == "— seleccionar —":
@@ -156,12 +172,13 @@ def _add_project_dialog(user_id: int) -> None:
             # Create project
             new_proj = create_project(user_id, name.strip(), ptype)
 
-            # Set admin_user_id
+            # Set admin_user_id and group_name
             with _gs() as _s:
-                u_admin = _s.query(User).filter_by(email=admin_email).first()
-                if u_admin:
-                    p = _s.get(Project, new_proj.id)
-                    if p:
+                p = _s.get(Project, new_proj.id)
+                if p:
+                    p.group_name = group_name.strip()
+                    u_admin = _s.query(User).filter_by(email=admin_email).first()
+                    if u_admin:
                         p.admin_user_id = u_admin.id
 
             # Save and classify files
@@ -188,7 +205,7 @@ def project_selector_sidebar(user_id: int) -> Optional[int]:
 
     projects = get_visible_projects(user_id)
 
-    # Show classification summary after project creation
+    # Show file-classification summary after project creation
     if st.session_state.get("_classify_summary"):
         summary = st.session_state.pop("_classify_summary")
         with st.sidebar:
@@ -198,29 +215,64 @@ def project_selector_sidebar(user_id: int) -> Optional[int]:
                     st.markdown(f"- `{item['filename']}` → **{item['module']}**")
                 st.caption("Puedes mover archivos manualmente desde el módulo correspondiente.")
 
-    if not projects:
+    # Split projects into grouped and ungrouped
+    grouped: dict[str, list] = {}   # group_name → [Project]
+    for p in projects:
+        g = getattr(p, "group_name", None) or ""
+        if g:
+            grouped.setdefault(g, []).append(p)
+
+    if not grouped:
         st.sidebar.caption(t("project.no_projects"))
-        if st.sidebar.button("➕ Agregar proyecto", key="_add_proj_btn_empty", use_container_width=True):
+        if st.sidebar.button("➕ Agregar proyecto", key="_add_proj_btn_empty",
+                             use_container_width=True):
             _add_project_dialog(user_id)
         return None
 
-    options = {p.name: p.id for p in projects}
-    current_id = st.session_state.get("current_project_id")
-    current_name = next((p.name for p in projects if p.id == current_id), projects[0].name)
+    # ── Level 1: group selector ──────────────────────────────────────────────
+    group_names = sorted(grouped.keys())
+    current_id  = st.session_state.get("current_project_id")
 
-    selected_name = st.sidebar.selectbox(
-        t("project.selector_label"),
-        list(options.keys()),
-        index=list(options.keys()).index(current_name),
-        key="_project_selector",
+    # Determine which group the current project belongs to
+    current_group = group_names[0]
+    for g, projs in grouped.items():
+        if any(p.id == current_id for p in projs):
+            current_group = g
+            break
+
+    selected_group = st.sidebar.selectbox(
+        "Grupos",
+        group_names,
+        index=group_names.index(current_group),
+        key="_group_selector",
     )
-    selected_id = options[selected_name]
+
+    # ── Level 2: project selector within group ───────────────────────────────
+    group_projects = sorted(grouped[selected_group], key=lambda p: p.name)
+    proj_names = [p.name for p in group_projects]
+
+    # Default: first project in group, or the already-selected one if it's in this group
+    default_proj_name = proj_names[0]
+    for p in group_projects:
+        if p.id == current_id:
+            default_proj_name = p.name
+            break
+
+    selected_proj_name = st.sidebar.selectbox(
+        selected_group,             # label = group name acts as sub-header
+        proj_names,
+        index=proj_names.index(default_proj_name),
+        key=f"_proj_selector_{selected_group}",
+    )
+
+    selected_id = next(p.id for p in group_projects if p.name == selected_proj_name)
 
     if selected_id != st.session_state.get("current_project_id"):
         st.session_state["current_project_id"] = selected_id
         st.rerun()
 
-    if st.sidebar.button("➕ Agregar proyecto", key="_add_proj_btn", use_container_width=True):
+    if st.sidebar.button("➕ Agregar proyecto", key="_add_proj_btn",
+                         use_container_width=True):
         _add_project_dialog(user_id)
 
     return selected_id
