@@ -2,7 +2,8 @@
 import altair as alt
 import streamlit as st
 from auth import require_auth, send_budget_approval_email
-from budget import get_all_categories, get_budget_lines, update_budget_line
+from budget import (create_budget_line,
+                    get_all_categories, get_budget_lines, update_budget_line)
 from budget_versioning import (change_status, create_budget, create_version,
                                get_budgets, STATUS_LABELS_ES, STATUS_LABELS_EN)
 from expenses import get_line_spent
@@ -49,8 +50,51 @@ def _cat_name(code: str) -> str:
 
 lines = get_budget_lines(project_id)
 
+def _add_line_form(categories: list) -> None:
+    """Expandable form to add a budget line manually."""
+    if st.session_state.get("is_viewer", False):
+        return
+    lbl = "➕ Agregar línea de presupuesto" if _lang == "es" else "➕ Add budget line"
+    with st.expander(lbl, expanded=not lines):
+        # Build category options grouped by level
+        cat_opts: dict[str, str] = {}
+        for c in categories:
+            indent = "" if c.level == 1 else ("    " if c.level == 2 else "        ")
+            label = f"{indent}{c.code} — {_cat_name(c.code)}"
+            cat_opts[label] = c.code
+
+        with st.form("_add_budget_line", clear_on_submit=True):
+            sel_label = st.selectbox(
+                "Categoría *" if _lang == "es" else "Category *",
+                list(cat_opts.keys()),
+            )
+            desc = st.text_input(
+                "Descripción" if _lang == "es" else "Description",
+                placeholder="Ej: Demolición área norte",
+            )
+            amt = st.number_input(
+                "Presupuesto Estimado *" if _lang == "es" else "Estimated Budget *",
+                min_value=0.0, step=1_000.0, value=0.0,
+            )
+            submitted = st.form_submit_button(
+                "➕ Agregar" if _lang == "es" else "➕ Add",
+                type="primary", use_container_width=True,
+            )
+            if submitted:
+                if amt <= 0:
+                    st.error("El monto debe ser mayor a cero." if _lang == "es"
+                             else "Amount must be greater than zero.")
+                else:
+                    create_budget_line(project_id, cat_opts[sel_label], amt, desc)
+                    st.success("✅ Línea agregada." if _lang == "es" else "✅ Line added.")
+                    st.rerun()
+
+
 if not lines:
-    st.info(t("common.no_data"))
+    st.info("No hay líneas de presupuesto. Agrega una manualmente o importa un archivo."
+            if _lang == "es" else
+            "No budget lines yet. Add one manually or import a file.")
+    _add_line_form(categories)
 else:
     groups: dict[str, list] = {}
     for line in lines:
@@ -207,6 +251,9 @@ else:
                                if _lang == "es" else " (Email notification pending SMTP configuration.)")
                 st.success(_notif)
                 st.rerun()
+
+    st.write("")
+    _add_line_form(categories)
 
 st.divider()
 

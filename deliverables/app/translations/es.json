@@ -96,7 +96,7 @@
   "project.type_badge_residential": "Residencial",
   "project.type_badge_commercial": "Comercial",
   "project.delete_confirm": "Eliminar este proyecto eliminara todos sus datos. Esta accion no se puede deshacer.",
-  "project.selector_label": "Proyecto activo",
+  "project.selector_label": "Grupos",
 
   "budget.title": "Presupuesto",
   "budget.add_line": "Agregar linea",

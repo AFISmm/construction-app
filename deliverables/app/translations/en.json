@@ -96,7 +96,7 @@
   "project.type_badge_residential": "Residential",
   "project.type_badge_commercial": "Commercial",
   "project.delete_confirm": "Deleting this project will remove all its data. This action cannot be undone.",
-  "project.selector_label": "Active project",
+  "project.selector_label": "Grupos",
 
   "budget.title": "Budget",
   "budget.add_line": "Add line",
