@@ -118,15 +118,15 @@ def get_project_context(project_id: int) -> str:
 
 
 def chat_response(messages: list[dict], project_id: int) -> str:
-    """Call Anthropic API and return the assistant reply."""
+    """Call OpenRouter (Anthropic-compatible) and return the assistant reply."""
     try:
         api_key = st.secrets.get("anthropic", {}).get("api_key", "")
         if not api_key:
             return (
                 "⚠️ El chatbot no está configurado. "
-                "Contacta al administrador para agregar la clave de API de Anthropic en secrets.toml."
+                "Agrega [anthropic] api_key en los Secrets de Streamlit Cloud."
             )
-        import anthropic as _anthropic
+        from openai import OpenAI
 
         context = get_project_context(project_id)
         system = (
@@ -136,14 +136,13 @@ def chat_response(messages: list[dict], project_id: int) -> str:
             "Usa listas y cifras cuando sea útil. No mezcles datos de otros proyectos.\n\n"
             f"DATOS DEL PROYECTO ACTIVO:\n{context}"
         )
-        client = _anthropic.Anthropic(api_key=api_key)
-        resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+        client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+        resp = client.chat.completions.create(
+            model="anthropic/claude-3-haiku",
             max_tokens=1500,
-            system=system,
-            messages=messages,
+            messages=[{"role": "system", "content": system}, *messages],
         )
-        return resp.content[0].text
+        return resp.choices[0].message.content
     except Exception as exc:
         return f"⚠️ Error al consultar el asistente: {exc}"
 
