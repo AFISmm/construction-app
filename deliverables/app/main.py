@@ -9,7 +9,7 @@ from auth import (
     send_otp, set_password, user_has_password, validate_password_strength,
     validate_persistent_session, verify_otp,
 )
-from db import init_db, seed_categories
+from db import init_db, seed_categories, seed_chicken_kitchen
 from i18n import language_toggle, set_language, t
 from permissions import (PAGE_FILES, VIEWER_DEFAULT_PAGES, get_allowed_pages,
                          get_pending_count, get_visible_projects,
@@ -41,6 +41,7 @@ def _bootstrap() -> None:
         try:
             init_db()
             seed_categories()
+            seed_chicken_kitchen()
             st.session_state["_db_ready"] = True
         except Exception as e:
             st.error(f"**DB URL usado:** `{masked}`\n\n**Error:** {e}")
@@ -111,6 +112,10 @@ def _sidebar(user: dict) -> None:
                 invalidate_persistent_session(token)
                 st.query_params.pop("s", None)
             logout()
+
+        # Chatbot (always at bottom of sidebar)
+        from chatbot import render_chatbot
+        render_chatbot(st.session_state.get("current_project_id"))
 
 
 def _login_page() -> None:

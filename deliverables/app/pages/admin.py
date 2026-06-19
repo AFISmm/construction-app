@@ -265,6 +265,295 @@ if _is_super:
                         st.rerun()
     st.divider()
 
+# ── Dialogs for user actions ──────────────────────────────────────────────────
+
+@st.dialog("✅ Aprobar usuario")
+def _aprobar_dialog(target_user: dict) -> None:
+    """Show pending items for a user and allow individual approval/rejection."""
+    from datetime import datetime as _dt
+    from db import Budget, Expense, get_session as _gs
+
+    st.markdown(f"**Usuario:** {target_user['email']} — Rol: **{ROLE_LABELS.get(target_user['role'], target_user['role'])}**")
+    st.divider()
+
+    proj_id = st.session_state.get("current_project_id")
+
+    # --- Account approval (if pending) ---
+    if target_user["role"] == "pending":
+        st.subheader("Solicitud de acceso pendiente")
+        selectable_roles = [r for r in ALL_ROLES if r != "admin"] + ["admin"]
+        sel_role = st.selectbox(
+            "Asignar rol",
+            selectable_roles,
+            format_func=lambda r: ROLE_LABELS.get(r, r),
+            key=f"_apr_role_{target_user['id']}",
+        )
+        is_external = sel_role in EXTERNAL_ROLES
+        if not is_external:
+            st.markdown("**Páginas visibles:**")
+            sel_pages: list[str] = []
+            cols = st.columns(2)
+            for i, (pk, pl) in enumerate(PAGE_LABELS.items()):
+                if cols[i % 2].checkbox(pl, value=True, key=f"_apr_pg_{target_user['id']}_{pk}"):
+                    sel_pages.append(pk)
+        else:
+            st.info("Proveedor/Contratista: será redirigido a completar el formulario extendido.")
+
+        ca, cr = st.columns(2)
+        if ca.button("✅ Aprobar acceso", use_container_width=True, type="primary", key=f"_apr_ok_{target_user['id']}"):
+            if is_external:
+                save_permission(target_user["id"], "pending_extended", [], None)
+            else:
+                pages_final = sel_pages or list(PAGE_LABELS.keys())
+                save_permission(target_user["id"], sel_role, pages_final, None)
+            st.success(f"{target_user['email']} aprobado.")
+            st.rerun()
+        if cr.button("❌ Rechazar", use_container_width=True, key=f"_apr_no_{target_user['id']}"):
+            save_permission(target_user["id"], "rejected", [], None)
+            st.warning(f"{target_user['email']} rechazado.")
+            st.rerun()
+        st.divider()
+
+    # --- Pending financial items ---
+    st.subheader("Ítems pendientes de aprobación")
+    found_items = False
+
+    if proj_id:
+        with get_session() as _s:
+            # Presupuestos en revisión creados por este usuario
+            budgets_review = _s.query(Budget).filter_by(
+                project_id=proj_id, status="review", created_by=target_user["id"]
+            ).all()
+
+            if budgets_review:
+                found_items = True
+                st.markdown("**Presupuestos en revisión:**")
+                for b in budgets_review:
+                    cols = st.columns([3, 1, 1])
+                    cols[0].write(f"📋 {b.name} v{b.version_major}.{b.version_minor}")
+                    if cols[1].button("✅", key=f"_bappr_{b.id}", help="Aprobar"):
+                        with get_session() as _s2:
+                            bv = _s2.get(Budget, b.id)
+                            if bv:
+                                bv.status = "approved"
+                                bv.updated_by = user["id"]
+                        st.success("Presupuesto aprobado.")
+                        st.rerun()
+                    if cols[2].button("❌", key=f"_brej_{b.id}", help="Rechazar"):
+                        with get_session() as _s2:
+                            bv = _s2.get(Budget, b.id)
+                            if bv:
+                                bv.status = "rejected"
+                                bv.updated_by = user["id"]
+                        st.warning("Presupuesto rechazado.")
+                        st.rerun()
+
+            # Gastos/pagos pendientes de aprobación de este usuario
+            try:
+                from sqlalchemy import text as _text
+                with get_session() as _gs2:
+                    pending_expenses = _gs2.execute(
+                        _text("""
+                            SELECT id, description, amount, expense_date, vendor
+                            FROM expenses
+                            WHERE project_id = :pid
+                              AND created_by = :uid
+                              AND approval_status = 'pending'
+                        """),
+                        {"pid": proj_id, "uid": target_user["id"]},
+                    ).fetchall()
+            except Exception:
+                pending_expenses = []
+
+            if pending_expenses:
+                found_items = True
+                st.markdown("**Gastos/Pagos pendientes:**")
+                for exp in pending_expenses:
+                    cols = st.columns([4, 1, 1])
+                    cols[0].write(f"💰 {exp[4] or '—'} | {exp[1] or '—'} | ${exp[2]:,.0f} ({exp[3]})")
+                    if cols[1].button("✅", key=f"_eappr_{exp[0]}", help="Aprobar"):
+                        from sqlalchemy import text as _text2
+                        with get_session() as _gs3:
+                            _gs3.execute(
+                                _text2("""
+                                    UPDATE expenses
+                                    SET approval_status='approved', approver_id=:aid, approved_at=:ts
+                                    WHERE id=:eid
+                                """),
+                                {"aid": user["id"], "ts": _dt.utcnow(), "eid": exp[0]},
+                            )
+                        st.success("Gasto aprobado.")
+                        st.rerun()
+                    if cols[2].button("❌", key=f"_erej_{exp[0]}", help="Rechazar"):
+                        from sqlalchemy import text as _text3
+                        with get_session() as _gs4:
+                            _gs4.execute(
+                                _text3("""
+                                    UPDATE expenses
+                                    SET approval_status='rejected', approver_id=:aid, approved_at=:ts
+                                    WHERE id=:eid
+                                """),
+                                {"aid": user["id"], "ts": _dt.utcnow(), "eid": exp[0]},
+                            )
+                        st.warning("Gasto rechazado.")
+                        st.rerun()
+
+    if not found_items and target_user["role"] != "pending":
+        st.info("No hay ítems pendientes de aprobación para este usuario en el proyecto activo.")
+
+
+@st.dialog("✏️ Editar — Subir archivos")
+def _editar_dialog(target_user: dict) -> None:
+    """Allow admin to upload files into the target user's accessible modules."""
+    from file_manager import MODULES, save_file as _sf
+
+    proj_id = st.session_state.get("current_project_id")
+    if not proj_id:
+        st.warning("Selecciona un proyecto activo primero.")
+        return
+
+    st.markdown(f"**Subir archivos para:** {target_user['email']}")
+    st.markdown(f"**Proyecto activo ID:** {proj_id}")
+    st.divider()
+
+    # Determine accessible modules for this user
+    user_pages = target_user.get("allowed_pages") or list(PAGE_LABELS.keys())
+    page_to_module = {
+        "presupuesto": "presupuesto",
+        "expenses": "gastos",
+        "proveedores": "proveedores",
+        "trazabilidad": "trazabilidad",
+    }
+    accessible_modules = {
+        mod: MODULES[mod]
+        for pg, mod in page_to_module.items()
+        if pg in user_pages and mod in MODULES
+    }
+    accessible_modules["general"] = MODULES["general"]
+
+    if not accessible_modules:
+        st.info("Este usuario no tiene módulos accesibles.")
+        return
+
+    sel_module_label = st.selectbox(
+        "Módulo destino",
+        list(accessible_modules.values()),
+        key=f"_edit_mod_{target_user['id']}",
+    )
+    sel_module = next(k for k, v in accessible_modules.items() if v == sel_module_label)
+
+    uploaded = st.file_uploader(
+        "Seleccionar archivos (acepta cualquier formato)",
+        accept_multiple_files=True,
+        key=f"_edit_files_{target_user['id']}",
+    )
+
+    if uploaded:
+        if st.button("📤 Subir archivos", type="primary", use_container_width=True, key=f"_edit_upload_{target_user['id']}"):
+            count = 0
+            for f in uploaded:
+                _sf(proj_id, target_user["id"], f.name, f.getvalue(),
+                    f.type or "application/octet-stream", sel_module)
+                count += 1
+            st.success(f"✅ {count} archivo(s) subido(s) al módulo **{sel_module_label}**.")
+            st.rerun()
+
+    # Show existing files in selected module
+    from file_manager import get_project_files
+    existing = get_project_files(proj_id, sel_module)
+    if existing:
+        st.markdown(f"**Archivos existentes en {sel_module_label}:**")
+        for pf in existing:
+            size_kb = round(pf.file_size / 1024, 1)
+            st.markdown(f"- 📄 `{pf.filename}` ({size_kb} KB) — {pf.uploaded_at.strftime('%Y-%m-%d %H:%M') if pf.uploaded_at else '—'}")
+
+
+@st.dialog("👁️ Ver usuario")
+def _ver_dialog(target_user: dict) -> None:
+    """Read-only view of a user's profile, modules, files, and recent activity."""
+    from db import BudgetAuditLog, Budget, Expense, Project, get_session as _gs
+
+    st.markdown(f"### {target_user['email']}")
+    st.markdown(f"**Rol:** {ROLE_LABELS.get(target_user['role'], target_user['role'])}")
+
+    # Status badge
+    status_colors = {
+        "pending": "🟡 Pendiente",
+        "rejected": "🔴 Rechazado",
+        "pending_extended": "🟠 Registro pendiente",
+    }
+    status_display = status_colors.get(
+        target_user["role"],
+        "🟢 Activo" if target_user["role"] not in ("pending", "rejected", "pending_extended") else target_user["role"]
+    )
+    st.markdown(f"**Estado:** {status_display}")
+    st.divider()
+
+    # Accessible modules
+    user_pages = target_user.get("allowed_pages")
+    if user_pages is None:
+        st.markdown("**Módulos:** Acceso completo")
+    else:
+        visible = [PAGE_LABELS[k] for k in user_pages if k in PAGE_LABELS]
+        st.markdown("**Módulos con acceso:** " + (", ".join(visible) if visible else "Ninguno"))
+
+    # Accessible projects
+    proj_ids = target_user.get("allowed_project_ids")
+    if proj_ids is None:
+        st.markdown("**Proyectos:** Todos")
+    else:
+        with _gs() as _s:
+            proj_names = [
+                p.name for p in _s.query(Project).filter(Project.id.in_(proj_ids)).all()
+            ]
+        st.markdown("**Proyectos:** " + (", ".join(proj_names) if proj_names else "Ninguno"))
+
+    st.divider()
+
+    # Files uploaded by this user
+    proj_id = st.session_state.get("current_project_id")
+    if proj_id:
+        from file_manager import MODULES
+        from db import ProjectFile, get_session as _gs2
+        with _gs2() as _s:
+            user_files = _s.query(ProjectFile).filter_by(
+                project_id=proj_id, uploaded_by=target_user["id"]
+            ).order_by(ProjectFile.uploaded_at.desc()).all()
+            _s.expunge_all()
+
+        if user_files:
+            st.markdown("**Archivos subidos (proyecto activo):**")
+            for pf in user_files[:15]:
+                mod_label = MODULES.get(pf.module, pf.module)
+                size_kb = round(pf.file_size / 1024, 1)
+                ts = pf.uploaded_at.strftime("%Y-%m-%d %H:%M") if pf.uploaded_at else "—"
+                st.markdown(f"- 📄 `{pf.filename}` | {mod_label} | {size_kb} KB | {ts}")
+        else:
+            st.caption("No hay archivos subidos por este usuario en el proyecto activo.")
+
+    # Recent activity (audit log)
+    st.divider()
+    st.markdown("**Actividad reciente:**")
+    proj_id = st.session_state.get("current_project_id")
+    if proj_id:
+        with get_session() as _s:
+            logs = (
+                _s.query(BudgetAuditLog)
+                .join(Budget)
+                .filter(Budget.project_id == proj_id, BudgetAuditLog.user_id == target_user["id"])
+                .order_by(BudgetAuditLog.timestamp.desc())
+                .limit(10)
+                .all()
+            )
+            for log in logs:
+                ts = log.timestamp.strftime("%Y-%m-%d %H:%M") if log.timestamp else "—"
+                st.markdown(f"- `{ts}` — {log.action}: {log.field_changed or ''} {log.notes or ''}")
+            if not logs:
+                st.caption("Sin actividad registrada en el proyecto activo.")
+    else:
+        st.caption("Selecciona un proyecto activo para ver la actividad.")
+
+
 # ── Usuarios registrados ──────────────────────────────────────────────────────
 st.subheader("Registered users" if _lang == "en" else "Usuarios registrados")
 
@@ -272,122 +561,39 @@ if not visible_users:
     st.info("No users assigned to manage." if _lang == "en" else "No tienes usuarios asignados para gestionar.")
     st.stop()
 
+# Header row
+hcols = st.columns([4, 2, 1, 1, 1])
+hcols[0].markdown("**Usuario**")
+hcols[1].markdown("**Rol**")
+hcols[2].markdown("**✅ APROBAR**")
+hcols[3].markdown("**✏️ EDITAR**")
+hcols[4].markdown("**👁️ VER**")
+st.divider()
+
 for u in visible_users:
     is_self = u["id"] == user["id"]
     role_lbl = ROLE_LABELS.get(u["role"], u["role"])
     icon = "⭐" if u["role"] in ("admin", "super_admin") else "👤"
-    header = f"{icon} {u['email']} [{role_lbl}]" + ((" (you)" if _lang == "en" else " (tú)") if is_self else "")
 
-    with st.expander(header, expanded=False):
-        if is_self:
-            st.caption("You cannot modify your own permissions." if _lang == "en" else "No puedes modificar tus propios permisos.")
-            continue
+    row = st.columns([4, 2, 1, 1, 1])
+    row[0].markdown(f"{icon} **{u['email']}**" + (f" _(tú)_" if is_self else ""))
+    row[1].markdown(role_lbl)
 
-        if not _is_super:
-            st.caption(f"Role: **{role_lbl}** | Only the administrator can edit profiles." if _lang == "en"
-                       else f"Rol: **{role_lbl}** | Solo el administrador puede editar perfiles.")
-            continue
+    # APROBAR: show for pending users OR users with pending financial items
+    aprobar_visible = u["role"] == "pending" or (not is_self and u["role"] not in ("admin", "super_admin"))
+    if aprobar_visible and not is_self:
+        if row[2].button("✅", key=f"_aprobar_{u['id']}", help="Aprobar", use_container_width=True):
+            _aprobar_dialog(u)
+    else:
+        row[2].markdown("—")
 
-        # Extended profile info if available
-        with get_session() as _ps:
-            _ext_prof = _ps.query(ExtendedProfile).filter_by(user_id=u["id"]).first()
-        if _ext_prof:
-            st.markdown("📋 **" + ("Extended profile" if _lang == "en" else "Perfil extendido") + "**")
-            st.markdown(
-                f"**{'Company' if _lang == 'en' else 'Empresa'}:** {_ext_prof.company_name} &nbsp;|&nbsp; "
-                f"**{'Name' if _lang == 'en' else 'Nombre'}:** {_ext_prof.first_name} {_ext_prof.middle_name or ''} {_ext_prof.last_name} &nbsp;|&nbsp; "
-                f"**{'Phone' if _lang == 'en' else 'Tel'}:** {_ext_prof.phone or '—'} &nbsp;|&nbsp; "
-                f"**{'Category' if _lang == 'en' else 'Categoría'}:** {_ext_prof.category}"
-            )
+    # EDITAR: all non-self users
+    if not is_self:
+        if row[3].button("✏️", key=f"_editar_{u['id']}", help="Editar / Subir archivos", use_container_width=True):
+            _editar_dialog(u)
+    else:
+        row[3].markdown("—")
 
-        with st.form(key=f"perm_{u['id']}"):
-            role = st.selectbox(
-                "Role" if _lang == "en" else "Rol",
-                ALL_ROLES,
-                index=ALL_ROLES.index(u["role"]) if u["role"] in ALL_ROLES else 0,
-                format_func=lambda r: ROLE_LABELS.get(r, r),
-            )
-
-            st.markdown("**" + ("Visible pages / Can edit" if _lang == "en" else "Páginas visibles / Puede editar") + ":**")
-            st.caption("Ver = página visible · Editar = puede modificar contenido" if _lang == "es"
-                       else "View = page visible · Edit = can modify content")
-            current_pages = u["allowed_pages"] if u["allowed_pages"] is not None else list(PAGE_LABELS.keys())
-            selected_pages = []
-            # Header row
-            _h1, _h2, _h3 = st.columns([2, 1, 1])
-            _h2.markdown("<small>**Ver**</small>" if _lang == "es" else "<small>**View**</small>", unsafe_allow_html=True)
-            _h3.markdown("<small>**Editar**</small>" if _lang == "es" else "<small>**Edit**</small>", unsafe_allow_html=True)
-            for key, lbl in PAGE_LABELS.items():
-                if key == "admin":
-                    continue
-                _c1, _c2, _c3 = st.columns([2, 1, 1])
-                _c1.write(lbl)
-                _view = _c2.checkbox("", value=key in current_pages, key=f"p_{u['id']}_{key}", label_visibility="collapsed")
-                _edit = _c3.checkbox("", value=f"{key}_edit" in current_pages, key=f"pe_{u['id']}_{key}", label_visibility="collapsed")
-                if _view:
-                    selected_pages.append(key)
-                if _edit:
-                    selected_pages.append(f"{key}_edit")
-
-            st.markdown("**" + ("Visible projects" if _lang == "en" else "Proyectos visibles") + ":**")
-            selected_project_ids = []
-            if project_options:
-                for pname, pid in project_options.items():
-                    checked_p = (u["allowed_project_ids"] is None or
-                                 (u["allowed_project_ids"] is not None and pid in u["allowed_project_ids"]))
-                    if st.checkbox(pname, value=checked_p, key=f"proj_{u['id']}_{pid}"):
-                        selected_project_ids.append(pid)
-                if len(selected_project_ids) == len(project_options):
-                    selected_project_ids = None
-            else:
-                st.caption("No hay proyectos." if _lang == "es" else "No projects.")
-
-            if st.form_submit_button("💾 Guardar permisos", use_container_width=True):
-                pages_to_save = None if role in ("admin", "super_admin") else (selected_pages or list(PAGE_LABELS.keys()))
-                save_permission(u["id"], role, pages_to_save, selected_project_ids)
-                st.success("Permissions updated." if _lang == "en" else "Permisos actualizados.")
-                st.rerun()
-
-        st.markdown("**Reset password**" if _lang == "en" else "**Restablecer contraseña**")
-        with st.form(f"pwd_{u['id']}"):
-            new_pwd = st.text_input("New password" if _lang == "en" else "Nueva contraseña", type="password", key=f"pw_{u['id']}")
-            if st.form_submit_button("Save password" if _lang == "en" else "Guardar contraseña", use_container_width=True):
-                from auth import validate_password_strength as _vps
-                _errs = _vps(new_pwd)
-                if _errs:
-                    for _e in _errs:
-                        st.error(_e)
-                else:
-                    set_password(u["id"], new_pwd, force_change=True)
-                    st.success("Password updated. User will be prompted to change it on next login."
-                               if _lang == "en" else
-                               "Contraseña actualizada. El usuario deberá cambiarla al próximo ingreso.")
-
-        if _is_super:
-            st.markdown("**Delete user**" if _lang == "en" else "**Eliminar usuario**")
-            from db import Project
-            with get_session() as _s:
-                user_projects = _s.query(Project).filter_by(user_id=u["id"]).count()
-            confirm_key = f"_confirm_del_{u['id']}"
-            if not st.session_state.get(confirm_key, False):
-                if st.button("Delete user" if _lang == "en" else "Eliminar usuario", key=f"del_{u['id']}"):
-                    st.session_state[confirm_key] = True
-                    st.rerun()
-            else:
-                msg = ("Confirm deleting **" + u["email"] + "**? This cannot be undone." if _lang == "en"
-                       else "¿Confirmas eliminar **" + u["email"] + "**? No se puede deshacer.")
-                if user_projects > 0:
-                    st.error(f"⚠ Este usuario tiene **{user_projects} proyecto(s)**. Eliminar borrará también esos datos.")
-                st.warning(msg)
-                col_yes, col_no = st.columns(2)
-                if col_yes.button("Yes, delete" if _lang == "en" else "Sí, eliminar", key=f"yes_{u['id']}", type="primary"):
-                    with get_session() as s:
-                        u_obj = s.get(User, u["id"])
-                        if u_obj:
-                            s.delete(u_obj)
-                    st.session_state.pop(confirm_key, None)
-                    st.success(f"Usuario {u['email']} eliminado.")
-                    st.rerun()
-                if col_no.button("Cancel" if _lang == "en" else "Cancelar", key=f"no_{u['id']}"):
-                    st.session_state.pop(confirm_key, None)
-                    st.rerun()
+    # VER: all users (including self)
+    if row[4].button("👁️", key=f"_ver_{u['id']}", help="Ver", use_container_width=True):
+        _ver_dialog(u)

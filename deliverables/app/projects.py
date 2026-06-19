@@ -93,13 +93,115 @@ def get_project_summary(project_id: int) -> Optional[ProjectSummary]:
         )
 
 
+@st.dialog("➕ Agregar Proyecto")
+def _add_project_dialog(user_id: int) -> None:
+    """Modal form for creating a new project."""
+    from db import User, UserPermission, get_session as _gs
+    import json as _json
+
+    # --- Project name ---
+    name = st.text_input("Nombre del proyecto *", placeholder="Ej: Edificio Central")
+
+    # --- Administrator dropdown (approved users only) ---
+    with _gs() as _s:
+        approved_emails: list[str] = []
+        for perm in _s.query(UserPermission).all():
+            if perm.role not in ("pending", "pending_extended", "rejected"):
+                u = _s.get(User, perm.user_id)
+                if u:
+                    approved_emails.append(u.email)
+
+    admin_options = ["— seleccionar —"] + sorted(approved_emails)
+    admin_email = st.selectbox("Administrador *", admin_options)
+
+    # --- Project type ---
+    ptype_label = st.radio(
+        "Tipo de proyecto *",
+        ["Residencial", "Comercial"],
+        horizontal=True,
+    )
+    ptype = "residential" if ptype_label == "Residencial" else "commercial"
+
+    # --- File upload ---
+    uploaded_files = st.file_uploader(
+        "Adjuntar archivos (opcional — acepta cualquier formato)",
+        accept_multiple_files=True,
+        key="_new_proj_files",
+    )
+
+    # Show pending files
+    if uploaded_files:
+        st.markdown(f"**{len(uploaded_files)} archivo(s) adjunto(s):**")
+        for f in uploaded_files:
+            size_kb = round(len(f.getvalue()) / 1024, 1)
+            st.markdown(f"- 📄 `{f.name}` ({size_kb} KB)")
+
+    st.markdown("---")
+    col_save, col_cancel = st.columns(2)
+
+    if col_cancel.button("Cancelar", use_container_width=True, key="_np_cancel"):
+        st.rerun()
+
+    if col_save.button("💾 Guardar", type="primary", use_container_width=True, key="_np_save"):
+        errors: list[str] = []
+        if not name.strip():
+            errors.append("⛔ El nombre del proyecto es obligatorio.")
+        if admin_email == "— seleccionar —":
+            errors.append("⛔ Debes seleccionar un administrador.")
+
+        if errors:
+            for e in errors:
+                st.error(e)
+        else:
+            # Create project
+            new_proj = create_project(user_id, name.strip(), ptype)
+
+            # Set admin_user_id
+            with _gs() as _s:
+                u_admin = _s.query(User).filter_by(email=admin_email).first()
+                if u_admin:
+                    p = _s.get(Project, new_proj.id)
+                    if p:
+                        p.admin_user_id = u_admin.id
+
+            # Save and classify files
+            if uploaded_files:
+                from file_manager import classify_file_by_name, save_file, MODULES
+                classifications: list[dict] = []
+                for f in uploaded_files:
+                    data = f.getvalue()
+                    module = classify_file_by_name(f.name)
+                    save_file(new_proj.id, user_id, f.name, data, f.type or "application/octet-stream", module)
+                    classifications.append({"filename": f.name, "module": MODULES.get(module, module)})
+                st.session_state["_classify_summary"] = classifications
+
+            st.session_state["current_project_id"] = new_proj.id
+            st.success(f"✅ Proyecto **{name.strip()}** creado exitosamente.")
+            if uploaded_files:
+                st.info("Los archivos fueron clasificados automáticamente. Puedes moverlos desde el módulo correspondiente.")
+            st.rerun()
+
+
 def project_selector_sidebar(user_id: int) -> Optional[int]:
     from i18n import t
     from permissions import get_visible_projects
 
     projects = get_visible_projects(user_id)
+
+    # Show classification summary after project creation
+    if st.session_state.get("_classify_summary"):
+        summary = st.session_state.pop("_classify_summary")
+        with st.sidebar:
+            with st.expander("📁 Archivos clasificados", expanded=True):
+                st.markdown("**Clasificación automática:**")
+                for item in summary:
+                    st.markdown(f"- `{item['filename']}` → **{item['module']}**")
+                st.caption("Puedes mover archivos manualmente desde el módulo correspondiente.")
+
     if not projects:
         st.sidebar.caption(t("project.no_projects"))
+        if st.sidebar.button("➕ Agregar proyecto", key="_add_proj_btn_empty", use_container_width=True):
+            _add_project_dialog(user_id)
         return None
 
     options = {p.name: p.id for p in projects}
@@ -117,5 +219,8 @@ def project_selector_sidebar(user_id: int) -> Optional[int]:
     if selected_id != st.session_state.get("current_project_id"):
         st.session_state["current_project_id"] = selected_id
         st.rerun()
+
+    if st.sidebar.button("➕ Agregar proyecto", key="_add_proj_btn", use_container_width=True):
+        _add_project_dialog(user_id)
 
     return selected_id

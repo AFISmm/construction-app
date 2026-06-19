@@ -6,7 +6,7 @@ from typing import Generator, List, Optional
 import streamlit as st
 from sqlalchemy import (
     Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey,
-    Integer, Numeric, String, Text, create_engine, func,
+    Integer, LargeBinary, Numeric, String, Text, create_engine, func,
 )
 from sqlalchemy.orm import (
     DeclarativeBase, Mapped, Session, mapped_column,
@@ -94,10 +94,11 @@ class Project(Base):
     project_type: Mapped[str] = mapped_column(String(20), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
     currency: Mapped[str] = mapped_column(String(3), default="COP", nullable=False)
+    admin_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
-    user: Mapped[User] = relationship(back_populates="projects")
+    user: Mapped[User] = relationship(back_populates="projects", foreign_keys="[Project.user_id]")
     rooms: Mapped[List["Room"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     budget_lines: Mapped[List["BudgetLine"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     expenses: Mapped[List["Expense"]] = relationship(back_populates="project", cascade="all, delete-orphan")
@@ -165,6 +166,10 @@ class Expense(Base):
     amount: Mapped[float] = mapped_column(Numeric(15, 2), nullable=False)
     expense_date: Mapped[date] = mapped_column(Date, nullable=False)
     notes: Mapped[Optional[str]] = mapped_column(Text)
+    approval_status: Mapped[Optional[str]] = mapped_column(String(20))
+    approver_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -329,6 +334,39 @@ class BudgetAuditLog(Base):
     version: Mapped[Optional["BudgetVersion"]] = relationship(back_populates="audit_entries")
 
 
+class ProjectFile(Base):
+    __tablename__ = "project_files"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    content_type: Mapped[str] = mapped_column(String(100), default="application/octet-stream", nullable=False)
+    module: Mapped[str] = mapped_column(String(50), default="sin_clasificar", nullable=False)
+    uploaded_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+
+
+class ApprovalRecord(Base):
+    __tablename__ = "approval_records"
+    __table_args__ = (
+        CheckConstraint("item_type IN ('presupuesto','pago','gasto')", name="chk_ar_item_type"),
+        CheckConstraint("status IN ('pending','approved','rejected')", name="chk_ar_status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    item_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    target_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    approver_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
 # ---------------------------------------------------------------------------
 # Database setup
 # ---------------------------------------------------------------------------
@@ -344,6 +382,11 @@ def _run_migrations() -> None:
         "ALTER TABLE budget_lines ADD COLUMN IF NOT EXISTS change_order_amount NUMERIC(15,2) DEFAULT 0",
         "ALTER TABLE budget_lines ADD COLUMN IF NOT EXISTS contracted_amount NUMERIC(15,2) DEFAULT 0",
         "ALTER TABLE user_permissions ADD COLUMN IF NOT EXISTS approval_modules TEXT",
+        "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT NULL",
+        "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS approver_id INTEGER REFERENCES users(id) ON DELETE SET NULL",
+        "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP",
+        "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL",
+        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS admin_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL",
     ]
     with _get_engine().connect() as conn:
         for sql in migrations:
@@ -438,3 +481,30 @@ def seed_categories() -> None:
             existing = session.get(Category, row["code"])
             if not existing:
                 session.add(Category(**row))
+
+
+def seed_chicken_kitchen() -> None:
+    """Create ChickenKitchen project if it doesn't exist. Called from app bootstrap."""
+    try:
+        super_email = st.secrets.get("app", {}).get("super_admin_email", "").strip().lower()
+        with get_session() as session:
+            existing = session.query(Project).filter_by(name="ChickenKitchen").first()
+            if existing:
+                return
+            u = None
+            if super_email:
+                u = session.query(User).filter_by(email=super_email).first()
+            if not u:
+                u = session.query(User).order_by(User.id).first()
+            if not u:
+                return
+            project = Project(
+                user_id=u.id,
+                name="ChickenKitchen",
+                project_type="commercial",
+                description="Proyecto ChickenKitchen",
+                currency="COP",
+            )
+            session.add(project)
+    except Exception:
+        pass
