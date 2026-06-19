@@ -164,7 +164,7 @@ def render_chatbot(project_id: Optional[int]) -> None:
 
     with st.sidebar:
         st.divider()
-        with st.expander("🤖 Asistente IA", expanded=False):
+        with st.expander("Asistente IA", expanded=False):
             if not project_id:
                 st.caption("Selecciona un proyecto para usar el asistente.")
                 return
