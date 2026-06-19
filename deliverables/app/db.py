@@ -521,27 +521,5 @@ def seed_categories() -> None:
 
 
 def seed_chicken_kitchen() -> None:
-    """Create ChickenKitchen project if it doesn't exist. Called from app bootstrap."""
-    try:
-        super_email = st.secrets.get("app", {}).get("super_admin_email", "").strip().lower()
-        with get_session() as session:
-            existing = session.query(Project).filter_by(name="ChickenKitchen").first()
-            if existing:
-                return
-            u = None
-            if super_email:
-                u = session.query(User).filter_by(email=super_email).first()
-            if not u:
-                u = session.query(User).order_by(User.id).first()
-            if not u:
-                return
-            project = Project(
-                user_id=u.id,
-                name="ChickenKitchen",
-                project_type="commercial",
-                description="Proyecto ChickenKitchen",
-                currency="COP",
-            )
-            session.add(project)
-    except Exception:
-        pass
+    """Kept for backwards compatibility — no longer seeds any project."""
+    pass
