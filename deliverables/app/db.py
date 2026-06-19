@@ -367,6 +367,26 @@ class ApprovalRecord(Base):
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
 
+class Vendor(Base):
+    __tablename__ = "vendors"
+    __table_args__ = (
+        CheckConstraint("status IN ('active','inactive','pending')", name="chk_vendor_status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    company_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_name: Mapped[Optional[str]] = mapped_column(String(200))
+    phone: Mapped[Optional[str]] = mapped_column(String(50))
+    email: Mapped[Optional[str]] = mapped_column(String(254))
+    trade: Mapped[Optional[str]] = mapped_column(String(150))
+    nit: Mapped[Optional[str]] = mapped_column(String(50))
+    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    source_file_id: Mapped[Optional[int]] = mapped_column(ForeignKey("project_files.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+
+
 # ---------------------------------------------------------------------------
 # Database setup
 # ---------------------------------------------------------------------------
@@ -375,6 +395,21 @@ def _run_migrations() -> None:
     """Add new columns to existing tables that SQLAlchemy create_all won't touch."""
     from sqlalchemy import text
     migrations = [
+        """CREATE TABLE IF NOT EXISTS vendors (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            company_name VARCHAR(255) NOT NULL,
+            contact_name VARCHAR(200),
+            phone VARCHAR(50),
+            email VARCHAR(254),
+            trade VARCHAR(150),
+            nit VARCHAR(50),
+            status VARCHAR(20) NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('active','inactive','pending')),
+            notes TEXT,
+            source_file_id INTEGER REFERENCES project_files(id) ON DELETE SET NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )""",
         "ALTER TABLE user_permissions ADD COLUMN IF NOT EXISTS managed_user_ids TEXT",
         "ALTER TABLE extended_profiles ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP",
         "ALTER TABLE user_passwords ADD COLUMN IF NOT EXISTS must_change BOOLEAN DEFAULT FALSE",
