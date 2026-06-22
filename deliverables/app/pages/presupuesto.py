@@ -16,6 +16,14 @@ user = require_auth()
 project_id = st.session_state.get("current_project_id")
 _lang = st.session_state.get("lang", "en")
 
+# Clear cached number_input values when project changes so DB amounts show correctly
+_prev_pid = st.session_state.get("_presupuesto_pid")
+if _prev_pid != project_id:
+    for k in list(st.session_state.keys()):
+        if k.startswith("_est_") or k.startswith("_adj_"):
+            del st.session_state[k]
+    st.session_state["_presupuesto_pid"] = project_id
+
 if not project_id:
     st.info(t("project.no_projects"))
     st.stop()
