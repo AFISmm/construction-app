@@ -1,4 +1,4 @@
-"""Tablero / Dashboard — summary metrics + 4-column read-only budget table."""
+"""Tablero / Dashboard — summary metrics + budget table (valued lines only)."""
 import streamlit as st
 from auth import require_auth
 from budget import get_all_categories, get_budget_lines
@@ -29,7 +29,7 @@ st.markdown(
 
 st.divider()
 
-# ── Column labels (match the table below) ─────────────────────────────────────
+# ── Column labels ──────────────────────────────────────────────────────────────
 _lbl_cat = t("report.category_col")
 _lbl_est = "Presupuesto Estimado"    if _lang == "es" else "Estimated Budget"
 _lbl_adj = "Presupuesto Ajustado"    if _lang == "es" else "Adjusted Budget"
@@ -37,7 +37,10 @@ _lbl_pay = "Pagos al Día"            if _lang == "es" else "Payments to Date"
 _lbl_bal = "Balance del Presupuesto" if _lang == "es" else "Budget Balance"
 
 categories = get_all_categories()
-lines = get_budget_lines(project_id)
+all_lines  = get_budget_lines(project_id)
+
+# Only show lines that have a non-zero estimated budget
+lines = [l for l in all_lines if float(l.budgeted_amount or 0) > 0]
 
 
 def _cat_name(code: str) -> str:
@@ -47,8 +50,17 @@ def _cat_name(code: str) -> str:
         (c.name for c in categories if c.code == code), code)
 
 
-# ── Pre-calculate table totals so metrics match the table exactly ──────────────
-_line_data: dict[int, tuple[float, float, float]] = {}  # line.id → (est, adj, pay)
+def _line_label(line) -> str:
+    """Return the most descriptive label for a budget line."""
+    if line.description:
+        # description format: "C.GC.1.1 - Permits & Fees" — show just the name part
+        parts = line.description.split(" - ", 1)
+        return parts[1].strip() if len(parts) == 2 else line.description
+    return _cat_name(line.category_code)
+
+
+# ── Pre-calculate totals ────────────────────────────────────────────────────────
+_line_data: dict[int, tuple[float, float, float]] = {}
 grand_est = grand_adj = grand_pay = 0.0
 for line in lines:
     estimated = float(line.budgeted_amount)
@@ -60,7 +72,7 @@ for line in lines:
     grand_adj += adjusted
     grand_pay += payments
 
-# ── Summary metrics — same values and labels as table columns ─────────────────
+# ── Summary metrics ─────────────────────────────────────────────────────────────
 col1, col2, col3 = st.columns(3)
 col1.metric(_lbl_est, fmt_money(grand_est))
 col2.metric(_lbl_adj, fmt_money(grand_adj))
@@ -81,10 +93,15 @@ else:
 
 st.divider()
 
-# ── 4-column read-only table ───────────────────────────────────────────────────
+# ── Budget table (valued lines only) ────────────────────────────────────────────
 if not lines:
-    st.info(t("common.no_data"))
+    st.info(
+        "No hay partidas con presupuesto asignado. Agrega valores en el módulo de Presupuesto."
+        if _lang == "es" else
+        "No budget lines with values yet. Add amounts in the Budget module."
+    )
 else:
+    # Group by top-level category (first segment of category_code)
     groups: dict[str, list] = {}
     for line in lines:
         top = line.category_code.split(".")[0]
@@ -101,14 +118,15 @@ else:
 
     for top_code in sorted(groups.keys()):
         group_lines = groups[top_code]
+        # Group header — top-level section name
         st.markdown(f"**{top_code} — {_cat_name(top_code)}**")
 
-        for line in group_lines:
+        for line in sorted(group_lines, key=lambda l: l.category_code):
             estimated, adjusted, payments = _line_data[line.id]
             balance = adjusted - payments
 
             c1, c2, c3, c4, c5 = st.columns([3, 1.5, 1.5, 1.5, 1.5])
-            c1.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{_cat_name(line.category_code)}")
+            c1.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{_line_label(line)}")
             c2.write(fmt_money(estimated))
             c3.write(fmt_money(adjusted))
             c4.write(fmt_money(payments))

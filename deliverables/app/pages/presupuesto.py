@@ -48,6 +48,14 @@ def _cat_name(code: str) -> str:
         (c.name for c in categories if c.code == code), code)
 
 
+def _line_label(line) -> str:
+    """Return the line's own description short name, or fall back to category name."""
+    if line.description:
+        parts = line.description.split(" - ", 1)
+        return parts[1].strip() if len(parts) == 2 else line.description
+    return _cat_name(line.category_code)
+
+
 lines = get_budget_lines(project_id)
 
 def _add_line_form(categories: list) -> None:
@@ -117,14 +125,14 @@ else:
         group_lines = groups[top_code]
         st.markdown(f"**{top_code} — {_cat_name(top_code)}**")
 
-        for line in group_lines:
+        for line in sorted(group_lines, key=lambda l: l.category_code):
             estimated = float(line.budgeted_amount)
             co_stored = float(getattr(line, "change_order_amount", 0) or 0)
             adj_default = co_stored if co_stored > 0 else estimated
             payments  = get_line_spent(line.id)
 
             c1, c2, c3, c4, c5 = st.columns([3, 1.5, 1.5, 1.5, 1.5])
-            c1.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{_cat_name(line.category_code)}")
+            c1.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{_line_label(line)}")
 
             new_est = c2.number_input(
                 _lbl_est, value=estimated, min_value=0.0, step=1000.0,
