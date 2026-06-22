@@ -65,7 +65,6 @@ AMOUNT_MAP: dict[int, float] = {
     1302: 35000,         # Exterior House Wrap
     1303: 55000,         # Exterior Insulation
     1307: 265000,        # Interior Trim Labor
-    1311: 750000,        # Cabinetry and Millwork
     1314: 174919,        # Foundation Waterproofing and Insulation
     1315: 122501,        # Building Insulation
     1316: 48500,         # Underslab Insulation
