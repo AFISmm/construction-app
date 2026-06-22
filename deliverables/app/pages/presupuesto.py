@@ -49,10 +49,9 @@ def _cat_name(code: str) -> str:
 
 
 def _line_label(line) -> str:
-    """Return the line's own description short name, or fall back to category name."""
+    """Return the full description including code prefix, or fall back to category name."""
     if line.description:
-        parts = line.description.split(" - ", 1)
-        return parts[1].strip() if len(parts) == 2 else line.description
+        return line.description
     return _cat_name(line.category_code)
 
 
