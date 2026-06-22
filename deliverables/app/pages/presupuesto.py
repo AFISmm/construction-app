@@ -28,16 +28,6 @@ if not project_id:
     st.info(t("project.no_projects"))
     st.stop()
 
-# TEMP DIAGNOSTIC — remove after confirming DB connection
-import re as _re
-from db import BudgetLine, get_session as _gs
-_raw_url = st.secrets.get("database", {}).get("url", "NOT SET")
-_masked = _re.sub(r":([^:@]+)@", ":***@", str(_raw_url))
-with _gs() as _ds:
-    _valued = _ds.query(BudgetLine).filter(BudgetLine.project_id == project_id, BudgetLine.budgeted_amount > 0).count()
-    _total  = _ds.query(BudgetLine).filter_by(project_id=project_id).count()
-st.info(f"**DB:** `{_masked}`  |  Líneas con valor: **{_valued}** / {_total}")
-
 summary = get_project_summary(project_id)
 title = "Presupuesto" if _lang == "es" else "Budget"
 st.title(title)
