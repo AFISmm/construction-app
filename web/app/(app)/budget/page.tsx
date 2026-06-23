@@ -3,6 +3,14 @@ import { fmtMoney, toNum } from "@/lib/format";
 import ProjectGate from "@/components/ProjectGate";
 import BudgetTable from "@/components/BudgetTable";
 
+interface BudgetLine {
+  id: number;
+  category_code: string;
+  description: string;
+  budgeted_amount: number;
+  change_order_amount: number;
+}
+
 export default async function BudgetPage({
   searchParams,
 }: {
@@ -17,7 +25,7 @@ export default async function BudgetPage({
     select: { name: true },
   });
 
-  const lines = await prisma.budget_lines.findMany({
+  const raw = await prisma.budget_lines.findMany({
     where: { project_id: projectId },
     orderBy: { category_code: "asc" },
     select: {
@@ -29,7 +37,7 @@ export default async function BudgetPage({
     },
   });
 
-  const serialized = lines.map((l: typeof lines[number]) => ({
+  const lines: BudgetLine[] = raw.map(l => ({
     id: l.id,
     category_code: l.category_code,
     description: l.description ?? l.category_code,
@@ -37,7 +45,8 @@ export default async function BudgetPage({
     change_order_amount: toNum(l.change_order_amount),
   }));
 
-  const totalBudget = serialized.reduce((s, l) => s + l.budgeted_amount, 0);
+  const totalBudget = lines.reduce((s: number, l: BudgetLine) => s + l.budgeted_amount, 0);
+  const withValues = lines.filter((l: BudgetLine) => l.budgeted_amount > 0).length;
 
   return (
     <div>
@@ -45,12 +54,12 @@ export default async function BudgetPage({
         <div>
           <h1 className="text-2xl font-bold text-white">{project?.name ?? "Project"} — Budget</h1>
           <p className="text-gray-400 text-sm mt-0.5">
-            {serialized.filter(l => l.budgeted_amount > 0).length} of {serialized.length} lines with values
+            {withValues} of {lines.length} lines with values
             · Total: <span className="text-white font-semibold">{fmtMoney(totalBudget)}</span>
           </p>
         </div>
       </div>
-      <BudgetTable lines={serialized} projectId={projectId} />
+      <BudgetTable lines={lines} projectId={projectId} />
     </div>
   );
 }
