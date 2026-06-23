@@ -24,7 +24,7 @@ async function getDashboardData(projectId: number): Promise<DashLine[]> {
     orderBy: { category_code: "asc" },
   });
 
-  return lines.map(l => ({
+  return lines.map((l: (typeof lines)[number]) => ({
     id: l.id,
     description: l.description ?? l.category_code,
     category_code: l.category_code,
@@ -32,7 +32,7 @@ async function getDashboardData(projectId: number): Promise<DashLine[]> {
     adjusted: toNum(l.change_order_amount) > 0
       ? toNum(l.change_order_amount)
       : toNum(l.budgeted_amount),
-    paid: l.expenses.reduce((s: number, e) => s + toNum(e.amount), 0),
+    paid: l.expenses.reduce((s: number, e: (typeof l.expenses)[number]) => s + toNum(e.amount), 0),
   }));
 }
 
