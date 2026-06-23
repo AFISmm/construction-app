@@ -1,0 +1,307 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model approval_records {
+  id                                           Int       @id @default(autoincrement())
+  item_type                                    String    @db.VarChar(20)
+  item_id                                      Int
+  project_id                                   Int
+  target_user_id                               Int?
+  approver_id                                  Int?
+  status                                       String    @db.VarChar(20)
+  notes                                        String?
+  created_at                                   DateTime  @db.Timestamp(6)
+  resolved_at                                  DateTime? @db.Timestamp(6)
+  users_approval_records_approver_idTousers    users?    @relation("approval_records_approver_idTousers", fields: [approver_id], references: [id], onUpdate: NoAction)
+  projects                                     projects  @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_approval_records_target_user_idTousers users?    @relation("approval_records_target_user_idTousers", fields: [target_user_id], references: [id], onUpdate: NoAction)
+}
+
+model budget_audit_log {
+  id              Int              @id @default(autoincrement())
+  budget_id       Int
+  version_id      Int?
+  action          String           @db.VarChar(40)
+  field_changed   String?          @db.VarChar(100)
+  old_value       String?
+  new_value       String?
+  notes           String?
+  user_id         Int?
+  timestamp       DateTime         @db.Timestamp(6)
+  budgets         budgets          @relation(fields: [budget_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           users?           @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+  budget_versions budget_versions? @relation(fields: [version_id], references: [id], onUpdate: NoAction)
+}
+
+model budget_lines {
+  id                  Int        @id @default(autoincrement())
+  project_id          Int
+  category_code       String     @db.VarChar(10)
+  room_id             Int?
+  description         String?
+  budgeted_amount     Decimal    @db.Decimal(15, 2)
+  created_at          DateTime   @db.Timestamp(6)
+  updated_at          DateTime   @db.Timestamp(6)
+  change_order_amount Decimal?   @default(0) @db.Decimal(15, 2)
+  contracted_amount   Decimal?   @default(0) @db.Decimal(15, 2)
+  categories          categories @relation(fields: [category_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  projects            projects   @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  rooms               rooms?     @relation(fields: [room_id], references: [id], onUpdate: NoAction)
+  expenses            expenses[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model budget_versions {
+  id                 Int                @id @default(autoincrement())
+  budget_id          Int
+  version_major      Int
+  version_minor      Int
+  version_label      String             @db.VarChar(20)
+  change_type        String             @db.VarChar(10)
+  change_description String?
+  status             String             @db.VarChar(20)
+  snapshot_json      String
+  created_at         DateTime           @db.Timestamp(6)
+  created_by         Int?
+  budget_audit_log   budget_audit_log[]
+  budgets            budgets            @relation(fields: [budget_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users              users?             @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model budgets {
+  id                              Int                @id @default(autoincrement())
+  project_id                      Int
+  name                            String             @db.VarChar(200)
+  status                          String             @db.VarChar(20)
+  version_major                   Int
+  version_minor                   Int
+  created_at                      DateTime           @db.Timestamp(6)
+  updated_at                      DateTime           @db.Timestamp(6)
+  created_by                      Int?
+  updated_by                      Int?
+  budget_audit_log                budget_audit_log[]
+  budget_versions                 budget_versions[]
+  users_budgets_created_byTousers users?             @relation("budgets_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+  projects                        projects           @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_budgets_updated_byTousers users?             @relation("budgets_updated_byTousers", fields: [updated_by], references: [id], onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model categories {
+  code                                                      String         @id @db.VarChar(10)
+  name                                                      String         @db.VarChar(200)
+  parent_code                                               String?        @db.VarChar(10)
+  description                                               String?
+  level                                                     Int
+  budget_lines                                              budget_lines[]
+  categories                                                categories?    @relation("categoriesTocategories", fields: [parent_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  other_categories                                          categories[]   @relation("categoriesTocategories")
+  import_rows_import_rows_matched_taxonomy_codeTocategories import_rows[]  @relation("import_rows_matched_taxonomy_codeTocategories")
+  import_rows_import_rows_override_codeTocategories         import_rows[]  @relation("import_rows_override_codeTocategories")
+}
+
+model expenses {
+  id                                Int          @id @default(autoincrement())
+  project_id                        Int
+  budget_line_id                    Int
+  vendor                            String?      @db.VarChar(200)
+  description                       String?
+  amount                            Decimal      @db.Decimal(15, 2)
+  expense_date                      DateTime     @db.Date
+  notes                             String?
+  created_at                        DateTime     @db.Timestamp(6)
+  updated_at                        DateTime     @db.Timestamp(6)
+  approval_status                   String?      @db.VarChar(20)
+  approver_id                       Int?
+  approved_at                       DateTime?    @db.Timestamp(6)
+  created_by                        Int?
+  users_expenses_approver_idTousers users?       @relation("expenses_approver_idTousers", fields: [approver_id], references: [id], onUpdate: NoAction)
+  budget_lines                      budget_lines @relation(fields: [budget_line_id], references: [id], onUpdate: NoAction)
+  users_expenses_created_byTousers  users?       @relation("expenses_created_byTousers", fields: [created_by], references: [id], onUpdate: NoAction)
+  projects                          projects     @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model extended_profiles {
+  id            Int       @id @default(autoincrement())
+  user_id       Int       @unique
+  company_name  String    @db.VarChar(200)
+  first_name    String    @db.VarChar(100)
+  middle_name   String?   @db.VarChar(100)
+  last_name     String    @db.VarChar(100)
+  phone         String?   @db.VarChar(50)
+  contact_email String    @db.VarChar(254)
+  category      String    @db.VarChar(200)
+  submitted_at  DateTime  @db.Timestamp(6)
+  reviewed_at   DateTime? @db.Timestamp(6)
+  users         users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model import_jobs {
+  id             Int           @id @default(autoincrement())
+  project_id     Int
+  filename       String        @db.VarChar(255)
+  status         String        @db.VarChar(20)
+  total_rows     Int
+  matched_rows   Int
+  unmatched_rows Int
+  error_message  String?
+  created_at     DateTime      @db.Timestamp(6)
+  updated_at     DateTime      @db.Timestamp(6)
+  projects       projects      @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  import_rows    import_rows[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model import_rows {
+  id                                                       Int         @id @default(autoincrement())
+  import_job_id                                            Int
+  original_description                                     String
+  original_amount                                          Decimal?    @db.Decimal(15, 2)
+  matched_taxonomy_code                                    String?     @db.VarChar(10)
+  confidence_score                                         Float?
+  override_code                                            String?     @db.VarChar(10)
+  status                                                   String      @db.VarChar(20)
+  created_at                                               DateTime    @db.Timestamp(6)
+  import_jobs                                              import_jobs @relation(fields: [import_job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categories_import_rows_matched_taxonomy_codeTocategories categories? @relation("import_rows_matched_taxonomy_codeTocategories", fields: [matched_taxonomy_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  categories_import_rows_override_codeTocategories         categories? @relation("import_rows_override_codeTocategories", fields: [override_code], references: [code], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model otp_tokens {
+  id            Int      @id @default(autoincrement())
+  user_id       Int
+  token_hash    String   @db.VarChar(64)
+  expires_at    DateTime @db.Timestamp(6)
+  used          Boolean
+  attempt_count Int
+  created_at    DateTime @db.Timestamp(6)
+  users         users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model project_files {
+  id           Int       @id @default(autoincrement())
+  project_id   Int
+  filename     String    @db.VarChar(255)
+  file_data    Bytes
+  file_size    Int
+  content_type String    @db.VarChar(100)
+  module       String    @db.VarChar(50)
+  uploaded_by  Int?
+  uploaded_at  DateTime  @db.Timestamp(6)
+  projects     projects  @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users        users?    @relation(fields: [uploaded_by], references: [id], onUpdate: NoAction)
+  vendors      vendors[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model projects {
+  id                                  Int                @id @default(autoincrement())
+  user_id                             Int
+  name                                String             @db.VarChar(120)
+  project_type                        String             @db.VarChar(20)
+  description                         String?
+  currency                            String             @db.VarChar(3)
+  created_at                          DateTime           @db.Timestamp(6)
+  updated_at                          DateTime           @db.Timestamp(6)
+  admin_user_id                       Int?
+  group_name                          String?            @db.VarChar(200)
+  approval_records                    approval_records[]
+  budget_lines                        budget_lines[]
+  budgets                             budgets[]
+  expenses                            expenses[]
+  import_jobs                         import_jobs[]
+  project_files                       project_files[]
+  users_projects_admin_user_idTousers users?             @relation("projects_admin_user_idTousers", fields: [admin_user_id], references: [id], onUpdate: NoAction)
+  users_projects_user_idTousers       users              @relation("projects_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  rooms                               rooms[]
+  vendors                             vendors[]
+}
+
+model rooms {
+  id           Int            @id @default(autoincrement())
+  project_id   Int
+  name         String         @db.VarChar(100)
+  description  String?
+  created_at   DateTime       @db.Timestamp(6)
+  budget_lines budget_lines[]
+  projects     projects       @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_passwords {
+  user_id       Int      @id
+  password_hash String   @db.VarChar(255)
+  updated_at    DateTime @db.Timestamp(6)
+  must_change   Boolean? @default(false)
+  users         users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_permissions {
+  id                  Int      @id @default(autoincrement())
+  user_id             Int      @unique
+  role                String   @db.VarChar(20)
+  allowed_pages       String?
+  allowed_project_ids String?
+  created_at          DateTime @db.Timestamp(6)
+  updated_at          DateTime @db.Timestamp(6)
+  managed_user_ids    String?
+  is_budget_approver  Boolean? @default(false)
+  approval_modules    String?
+  users               users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_sessions {
+  id            Int      @id @default(autoincrement())
+  user_id       Int
+  session_token String   @unique @db.VarChar(64)
+  expires_at    DateTime @db.Timestamp(6)
+  created_at    DateTime @db.Timestamp(6)
+  users         users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id                                                      Int                @id @default(autoincrement())
+  email                                                   String             @unique @db.VarChar(254)
+  created_at                                              DateTime           @db.Timestamp(6)
+  approval_records_approval_records_approver_idTousers    approval_records[] @relation("approval_records_approver_idTousers")
+  approval_records_approval_records_target_user_idTousers approval_records[] @relation("approval_records_target_user_idTousers")
+  budget_audit_log                                        budget_audit_log[]
+  budget_versions                                         budget_versions[]
+  budgets_budgets_created_byTousers                       budgets[]          @relation("budgets_created_byTousers")
+  budgets_budgets_updated_byTousers                       budgets[]          @relation("budgets_updated_byTousers")
+  expenses_expenses_approver_idTousers                    expenses[]         @relation("expenses_approver_idTousers")
+  expenses_expenses_created_byTousers                     expenses[]         @relation("expenses_created_byTousers")
+  extended_profiles                                       extended_profiles?
+  otp_tokens                                              otp_tokens[]
+  project_files                                           project_files[]
+  projects_projects_admin_user_idTousers                  projects[]         @relation("projects_admin_user_idTousers")
+  projects_projects_user_idTousers                        projects[]         @relation("projects_user_idTousers")
+  user_passwords                                          user_passwords?
+  user_permissions                                        user_permissions?
+  user_sessions                                           user_sessions[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model vendors {
+  id             Int            @id @default(autoincrement())
+  project_id     Int
+  company_name   String         @db.VarChar(255)
+  contact_name   String?        @db.VarChar(200)
+  phone          String?        @db.VarChar(50)
+  email          String?        @db.VarChar(254)
+  trade          String?        @db.VarChar(150)
+  nit            String?        @db.VarChar(50)
+  status         String         @default("pending") @db.VarChar(20)
+  notes          String?
+  source_file_id Int?
+  created_at     DateTime       @default(now()) @db.Timestamp(6)
+  projects       projects       @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  project_files  project_files? @relation(fields: [source_file_id], references: [id], onUpdate: NoAction)
+}
