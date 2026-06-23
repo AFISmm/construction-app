@@ -29,7 +29,7 @@ export default async function BudgetPage({
     },
   });
 
-  const serialized = lines.map(l => ({
+  const serialized = lines.map((l: typeof lines[number]) => ({
     id: l.id,
     category_code: l.category_code,
     description: l.description ?? l.category_code,
