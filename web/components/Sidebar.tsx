@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
 const NAV = [
@@ -15,23 +15,35 @@ interface Project { id: number; name: string; group_name: string | null }
 export default function Sidebar({ userEmail }: { userEmail: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/projects").then(r => r.json()).then((data: Project[]) => {
       setProjects(data);
+      const pidFromUrl = searchParams.get("pid");
       const stored = localStorage.getItem("projectId");
-      const first = data[0]?.id ?? null;
-      const id = stored ? parseInt(stored) : first;
-      setProjectId(id);
+      const id = pidFromUrl
+        ? parseInt(pidFromUrl)
+        : stored
+        ? parseInt(stored)
+        : (data[0]?.id ?? null);
+      if (id) {
+        setProjectId(id);
+        localStorage.setItem("projectId", String(id));
+        if (!pidFromUrl) {
+          router.replace(`${pathname}?pid=${id}`);
+        }
+      }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleProject(id: number) {
     setProjectId(id);
     localStorage.setItem("projectId", String(id));
-    router.refresh();
+    router.push(`${pathname}?pid=${id}`);
   }
 
   async function handleLogout() {
@@ -44,6 +56,10 @@ export default function Sidebar({ userEmail }: { userEmail: string }) {
     acc[g] = [...(acc[g] ?? []), p];
     return acc;
   }, {});
+
+  function navHref(href: string) {
+    return projectId ? `${href}?pid=${projectId}` : href;
+  }
 
   return (
     <aside className="w-56 bg-gray-900 border-r border-gray-800 flex flex-col flex-shrink-0">
@@ -76,7 +92,7 @@ export default function Sidebar({ userEmail }: { userEmail: string }) {
         {NAV.map(({ href, label }) => (
           <Link
             key={href}
-            href={href}
+            href={navHref(href)}
             className={`block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               pathname === href
                 ? "bg-orange-600 text-white"

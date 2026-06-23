@@ -37,7 +37,7 @@ export default async function BudgetPage({
     },
   });
 
-  const lines: BudgetLine[] = raw.map(l => ({
+  const lines: BudgetLine[] = raw.map((l: (typeof raw)[number]) => ({
     id: l.id,
     category_code: l.category_code,
     description: l.description ?? l.category_code,
