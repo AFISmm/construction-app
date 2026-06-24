@@ -16,12 +16,15 @@ export default function Sidebar({ userEmail }: { userEmail: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<string>("");
   const [projectId, setProjectId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/projects").then(r => r.json()).then((data: Project[]) => {
       setProjects(data);
+
       const pidFromUrl = searchParams.get("pid");
       const stored = localStorage.getItem("projectId");
       const id = pidFromUrl
@@ -29,16 +32,33 @@ export default function Sidebar({ userEmail }: { userEmail: string }) {
         : stored
         ? parseInt(stored)
         : (data[0]?.id ?? null);
-      if (id) {
-        setProjectId(id);
-        localStorage.setItem("projectId", String(id));
+
+      if (id && data.length > 0) {
+        const match = data.find(p => p.id === id) ?? data[0];
+        setProjectId(match.id);
+        setSelectedGroup(match.group_name ?? groups(data)[0] ?? "");
+        localStorage.setItem("projectId", String(match.id));
         if (!pidFromUrl) {
-          router.replace(`${pathname}?pid=${id}`);
+          router.replace(`${pathname}?pid=${match.id}`);
         }
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function groups(list: Project[]): string[] {
+    return [...new Set(list.map(p => p.group_name ?? "").filter(Boolean))].sort();
+  }
+
+  function projectsInGroup(group: string): Project[] {
+    return projects.filter(p => p.group_name === group);
+  }
+
+  function handleGroupChange(group: string) {
+    setSelectedGroup(group);
+    const first = projectsInGroup(group)[0];
+    if (first) handleProject(first.id);
+  }
 
   function handleProject(id: number) {
     setProjectId(id);
@@ -51,18 +71,16 @@ export default function Sidebar({ userEmail }: { userEmail: string }) {
     router.push("/login");
   }
 
-  const groups = projects.reduce<Record<string, Project[]>>((acc, p) => {
-    const g = p.group_name ?? "Projects";
-    acc[g] = [...(acc[g] ?? []), p];
-    return acc;
-  }, {});
-
   function navHref(href: string) {
     return projectId ? `${href}?pid=${projectId}` : href;
   }
 
+  const groupList = groups(projects);
+  const subprojects = selectedGroup ? projectsInGroup(selectedGroup) : [];
+
   return (
     <aside className="w-56 bg-gray-900 border-r border-gray-800 flex flex-col flex-shrink-0">
+      {/* Header */}
       <div className="p-4 border-b border-gray-800">
         <h2 className="text-sm font-bold text-orange-400 uppercase tracking-wider">
           Construction Budget
@@ -70,21 +88,43 @@ export default function Sidebar({ userEmail }: { userEmail: string }) {
       </div>
 
       {/* Project selector */}
-      <div className="p-3 border-b border-gray-800 space-y-2">
-        {Object.entries(groups).map(([group, list]) => (
-          <div key={group}>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{group}</p>
+      <div className="p-3 border-b border-gray-800 space-y-3">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          Proyectos
+        </p>
+
+        {/* Level 1: Client / Group */}
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Cliente</label>
+          <select
+            className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-orange-500"
+            value={selectedGroup}
+            onChange={e => handleGroupChange(e.target.value)}
+          >
+            {groupList.length === 0 && (
+              <option value="">Sin proyectos</option>
+            )}
+            {groupList.map(g => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Level 2: Subproject */}
+        {subprojects.length > 0 && (
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Subproyecto</label>
             <select
-              className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded px-2 py-1"
-              value={list.some(p => p.id === projectId) ? (projectId ?? "") : ""}
+              className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-orange-500"
+              value={projectId ?? ""}
               onChange={e => handleProject(Number(e.target.value))}
             >
-              {list.map(p => (
+              {subprojects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
           </div>
-        ))}
+        )}
       </div>
 
       {/* Navigation */}
