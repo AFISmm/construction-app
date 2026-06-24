@@ -3,7 +3,13 @@ import { signIn, createSession, COOKIE } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json();
-  const user = await signIn(email, password);
+  let user;
+  try {
+    user = await signIn(email, password);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `DB error: ${msg}` }, { status: 500 });
+  }
   if (!user) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
