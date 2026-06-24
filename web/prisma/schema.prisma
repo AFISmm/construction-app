@@ -270,6 +270,9 @@ model users {
   id                                                      Int                @id @default(autoincrement())
   email                                                   String             @unique @db.VarChar(254)
   created_at                                              DateTime           @db.Timestamp(6)
+  username                                                String?            @unique @db.VarChar(100)
+  first_name                                              String?            @db.VarChar(100)
+  last_name                                               String?            @db.VarChar(100)
   approval_records_approval_records_approver_idTousers    approval_records[] @relation("approval_records_approver_idTousers")
   approval_records_approval_records_target_user_idTousers approval_records[] @relation("approval_records_target_user_idTousers")
   budget_audit_log                                        budget_audit_log[]

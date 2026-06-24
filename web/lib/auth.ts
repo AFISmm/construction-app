@@ -9,6 +9,7 @@ const COOKIE = "session";
 export interface SessionUser {
   id: number;
   email: string;
+  username?: string;
 }
 
 export async function signIn(email: string, password: string): Promise<SessionUser | null> {
@@ -20,11 +21,11 @@ export async function signIn(email: string, password: string): Promise<SessionUs
   if (!hash) return null;
   const ok = await bcrypt.compare(password, hash);
   if (!ok) return null;
-  return { id: user!.id, email: user!.email };
+  return { id: user!.id, email: user!.email, username: user!.username ?? undefined };
 }
 
 export async function createSession(user: SessionUser): Promise<string> {
-  return new SignJWT({ id: user.id, email: user.email })
+  return new SignJWT({ id: user.id, email: user.email, username: user.username })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("7d")
     .sign(SECRET);
@@ -36,7 +37,11 @@ export async function getSession(): Promise<SessionUser | null> {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, SECRET);
-    return { id: payload.id as number, email: payload.email as string };
+    return {
+      id: payload.id as number,
+      email: payload.email as string,
+      username: payload.username as string | undefined,
+    };
   } catch {
     return null;
   }

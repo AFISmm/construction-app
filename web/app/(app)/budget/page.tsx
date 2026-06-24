@@ -1,14 +1,16 @@
 import { prisma } from "@/lib/db";
-import { fmtMoney, toNum } from "@/lib/format";
+import { toNum } from "@/lib/format";
 import ProjectGate from "@/components/ProjectGate";
 import BudgetTable from "@/components/BudgetTable";
 
-interface BudgetLine {
+export interface BudgetLine {
   id: number;
   category_code: string;
+  category_name: string;
   description: string;
   budgeted_amount: number;
   change_order_amount: number;
+  paid: number;
 }
 
 export default async function BudgetPage({
@@ -25,28 +27,27 @@ export default async function BudgetPage({
     select: { name: true },
   });
 
-  const raw = await prisma.budget_lines.findMany({
-    where: { project_id: projectId },
-    orderBy: { category_code: "asc" },
-    select: {
-      id: true,
-      category_code: true,
-      description: true,
-      budgeted_amount: true,
-      change_order_amount: true,
-    },
-  });
+  const [raw, categories] = await Promise.all([
+    prisma.budget_lines.findMany({
+      where: { project_id: projectId },
+      orderBy: { category_code: "asc" },
+      include: { expenses: { select: { amount: true } } },
+    }),
+    prisma.categories.findMany({ select: { code: true, name: true } }),
+  ]);
+
+  const catNames: Record<string, string> = {};
+  for (const c of categories) catNames[c.code] = c.name;
 
   const lines: BudgetLine[] = raw.map((l: (typeof raw)[number]) => ({
     id: l.id,
     category_code: l.category_code,
-    description: l.description ?? l.category_code,
+    category_name: catNames[l.category_code] ?? l.category_code,
+    description: l.description ?? catNames[l.category_code] ?? l.category_code,
     budgeted_amount: toNum(l.budgeted_amount),
     change_order_amount: toNum(l.change_order_amount),
+    paid: l.expenses.reduce((s: number, e: { amount: unknown }) => s + toNum(e.amount), 0),
   }));
-
-  const totalBudget = lines.reduce((s: number, l: BudgetLine) => s + l.budgeted_amount, 0);
-  const withValues = lines.filter((l: BudgetLine) => l.budgeted_amount > 0).length;
 
   return (
     <div>
@@ -54,12 +55,11 @@ export default async function BudgetPage({
         <div>
           <h1 className="text-2xl font-bold text-white">{project?.name ?? "Project"} — Budget</h1>
           <p className="text-gray-400 text-sm mt-0.5">
-            {withValues} of {lines.length} lines with values
-            · Total: <span className="text-white font-semibold">{fmtMoney(totalBudget)}</span>
+            {lines.filter(l => l.budgeted_amount > 0).length} of {lines.length} lines with values
           </p>
         </div>
       </div>
-      <BudgetTable lines={lines} projectId={projectId} />
+      <BudgetTable lines={lines} projectId={projectId} catNames={catNames} />
     </div>
   );
 }
