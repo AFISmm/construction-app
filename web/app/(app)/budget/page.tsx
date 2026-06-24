@@ -1,7 +1,9 @@
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { toNum } from "@/lib/format";
 import ProjectGate from "@/components/ProjectGate";
 import BudgetTable from "@/components/BudgetTable";
+import { t, Lang } from "@/lib/lang";
 
 export interface BudgetLine {
   id: number;
@@ -21,6 +23,8 @@ export default async function BudgetPage({
   const params = await searchParams;
   const projectId = params.pid ? parseInt(params.pid) : null;
   if (!projectId) return <ProjectGate />;
+
+  const lang = ((await cookies()).get("ck_lang")?.value ?? "en") as Lang;
 
   const project = await prisma.projects.findUnique({
     where: { id: projectId },
@@ -49,17 +53,21 @@ export default async function BudgetPage({
     paid: l.expenses.reduce((s: number, e: { amount: unknown }) => s + toNum(e.amount), 0),
   }));
 
+  const withValues = lines.filter(l => l.budgeted_amount > 0).length;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">{project?.name ?? "Project"} — Budget</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {project?.name ?? "Project"} {t("budget_title_suffix", lang)}
+          </h1>
           <p className="text-gray-400 text-sm mt-0.5">
-            {lines.filter(l => l.budgeted_amount > 0).length} of {lines.length} lines with values
+            {withValues} {t("budget_of", lang)} {lines.length} {t("budget_lines_count", lang)}
           </p>
         </div>
       </div>
-      <BudgetTable lines={lines} projectId={projectId} catNames={catNames} />
+      <BudgetTable lines={lines} projectId={projectId} catNames={catNames} lang={lang} />
     </div>
   );
 }

@@ -1,6 +1,8 @@
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { fmtMoney, toNum } from "@/lib/format";
 import ProjectGate from "@/components/ProjectGate";
+import { t, Lang } from "@/lib/lang";
 
 interface DashLine {
   id: number;
@@ -47,6 +49,8 @@ export default async function DashboardPage({
   const projectId = params.pid ? parseInt(params.pid) : null;
   if (!projectId) return <ProjectGate />;
 
+  const lang = ((await cookies()).get("ck_lang")?.value ?? "en") as Lang;
+
   const project = await prisma.projects.findUnique({
     where: { id: projectId },
     select: { name: true },
@@ -65,18 +69,18 @@ export default async function DashboardPage({
   }
 
   const metrics = [
-    { label: "Estimated Budget", value: totalBudget },
-    { label: "Adjusted Budget",  value: totalAdj },
-    { label: "Payments to Date", value: totalPaid },
-    { label: "Balance",          value: balance, colored: true },
+    { label: t("col_estimated", lang), value: totalBudget },
+    { label: t("col_adjusted",  lang), value: totalAdj },
+    { label: t("col_paid",      lang), value: totalPaid },
+    { label: t("col_balance",   lang), value: balance, colored: true },
   ];
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-white mb-1">{project?.name ?? "Project"}</h1>
-      <p className="text-gray-400 text-sm mb-6">Budget Dashboard</p>
+      <p className="text-gray-400 text-sm mb-6">{t("dash_subtitle", lang)}</p>
 
-      {/* Metric cards */}
+      {/* Tarjetas métricas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {metrics.map((m) => (
           <div key={m.label} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
@@ -89,21 +93,19 @@ export default async function DashboardPage({
       </div>
 
       {lines.length === 0 ? (
-        <p className="text-gray-500 text-sm">No budget lines with values yet.</p>
+        <p className="text-gray-500 text-sm">{t("dash_no_lines", lang)}</p>
       ) : (
         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          {/* Column headers */}
           <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 px-4 py-3 border-b border-gray-800 text-xs text-gray-400 uppercase tracking-wider">
-            <span>Category</span>
-            <span className="text-right">Estimated Budget</span>
-            <span className="text-right">Adjusted Budget</span>
-            <span className="text-right">Payments to Date</span>
-            <span className="text-right">Balance</span>
+            <span>{t("col_category",  lang)}</span>
+            <span className="text-right">{t("col_estimated", lang)}</span>
+            <span className="text-right">{t("col_adjusted",  lang)}</span>
+            <span className="text-right">{t("col_paid",      lang)}</span>
+            <span className="text-right">{t("col_balance",   lang)}</span>
           </div>
 
           {Object.entries(groups).sort().map(([top, groupLines]) => (
             <div key={top}>
-              {/* Group header with real category name */}
               <div className="px-4 py-2 bg-gray-800/50 text-sm font-semibold text-gray-300">
                 {top}{catNames[top] ? ` — ${catNames[top]}` : ""}
               </div>
@@ -127,9 +129,8 @@ export default async function DashboardPage({
             </div>
           ))}
 
-          {/* Grand total */}
           <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr] gap-4 px-4 py-3 border-t border-gray-700 font-bold text-sm bg-gray-800/30">
-            <span className="text-white">Total</span>
+            <span className="text-white">{t("lbl_total", lang)}</span>
             <span className="text-right text-white">{fmtMoney(totalBudget)}</span>
             <span className="text-right text-white">{fmtMoney(totalAdj)}</span>
             <span className="text-right text-white">{fmtMoney(totalPaid)}</span>

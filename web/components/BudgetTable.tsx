@@ -2,16 +2,19 @@
 import { useState, useTransition } from "react";
 import { fmtMoney } from "@/lib/format";
 import { updateBudgetLine } from "@/app/actions/budget";
+import { t, Lang } from "@/lib/lang";
 import type { BudgetLine } from "@/app/(app)/budget/page";
 
 export default function BudgetTable({
   lines,
   projectId,
   catNames,
+  lang,
 }: {
   lines: BudgetLine[];
   projectId: number;
   catNames: Record<string, string>;
+  lang: Lang;
 }) {
   const [amounts, setAmounts] = useState<Record<number, number>>(() =>
     Object.fromEntries(lines.map(l => [l.id, l.budgeted_amount]))
@@ -36,23 +39,21 @@ export default function BudgetTable({
     return line ? s + v : s;
   }, 0);
 
-  const totalAdj = lines.reduce((s, l) => {
+  const totalAdj  = lines.reduce((s, l) => {
     const adj = l.change_order_amount > 0 ? l.change_order_amount : (amounts[l.id] ?? l.budgeted_amount);
     return s + adj;
   }, 0);
-
-  const totalPaid   = lines.reduce((s, l) => s + l.paid, 0);
-  const totalBal    = totalAdj - totalPaid;
+  const totalPaid = lines.reduce((s, l) => s + l.paid, 0);
+  const totalBal  = totalAdj - totalPaid;
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-      {/* Header */}
       <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 border-b border-gray-800 text-xs text-gray-400 uppercase tracking-wider">
-        <span>Category</span>
-        <span className="text-right">Estimated Budget</span>
-        <span className="text-right">Adjusted Budget</span>
-        <span className="text-right">Payments to Date</span>
-        <span className="text-right">Balance</span>
+        <span>{t("col_category",  lang)}</span>
+        <span className="text-right">{t("col_estimated", lang)}</span>
+        <span className="text-right">{t("col_adjusted",  lang)}</span>
+        <span className="text-right">{t("col_paid",      lang)}</span>
+        <span className="text-right">{t("col_balance",   lang)}</span>
         <span className="w-16" />
       </div>
 
@@ -62,10 +63,10 @@ export default function BudgetTable({
             {top}{catNames[top] ? ` — ${catNames[top]}` : ""}
           </div>
           {groupLines.map(l => {
-            const amt       = amounts[l.id] ?? l.budgeted_amount;
-            const adjusted  = l.change_order_amount > 0 ? l.change_order_amount : amt;
-            const balance   = adjusted - l.paid;
-            const changed   = amt !== l.budgeted_amount;
+            const amt      = amounts[l.id] ?? l.budgeted_amount;
+            const adjusted = l.change_order_amount > 0 ? l.change_order_amount : amt;
+            const balance  = adjusted - l.paid;
+            const changed  = amt !== l.budgeted_amount;
             return (
               <div
                 key={l.id}
@@ -74,26 +75,18 @@ export default function BudgetTable({
                 <span className={`text-sm pl-3 truncate ${amt > 0 ? "text-gray-200" : "text-gray-500"}`} title={l.description}>
                   {l.description}
                 </span>
-                {/* Estimated Budget — editable */}
                 <div className="flex justify-end">
                   <input
-                    type="number"
-                    min={0}
-                    step={1000}
-                    value={amt}
+                    type="number" min={0} step={1000} value={amt}
                     onChange={e => setAmounts(prev => ({ ...prev, [l.id]: parseFloat(e.target.value) || 0 }))}
                     className="w-32 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-right text-sm text-white focus:outline-none focus:border-orange-500"
                   />
                 </div>
-                {/* Adjusted Budget — read only */}
                 <span className="text-right text-sm text-gray-300">{fmtMoney(adjusted)}</span>
-                {/* Payments to Date — read only */}
                 <span className="text-right text-sm text-gray-300">{fmtMoney(l.paid)}</span>
-                {/* Balance */}
                 <span className={`text-right text-sm font-medium ${balance < 0 ? "text-red-400" : "text-gray-300"}`}>
                   {fmtMoney(balance)}
                 </span>
-                {/* Save button */}
                 <div className="flex justify-end w-16">
                   {changed && (
                     <button
@@ -101,7 +94,7 @@ export default function BudgetTable({
                       disabled={saving === l.id}
                       className="text-xs bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white px-3 py-1 rounded transition-colors"
                     >
-                      {saving === l.id ? "…" : "Save"}
+                      {saving === l.id ? "…" : t("btn_save", lang)}
                     </button>
                   )}
                 </div>
@@ -111,9 +104,8 @@ export default function BudgetTable({
         </div>
       ))}
 
-      {/* Totals */}
       <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 border-t border-gray-700 font-bold text-sm bg-gray-800/30">
-        <span className="text-white">Total</span>
+        <span className="text-white">{t("lbl_total", lang)}</span>
         <span className="text-right text-white">{fmtMoney(totalBudget)}</span>
         <span className="text-right text-white">{fmtMoney(totalAdj)}</span>
         <span className="text-right text-white">{fmtMoney(totalPaid)}</span>

@@ -61,8 +61,12 @@ export default function Sidebar({ userDisplay }: { userDisplay: string }) {
 
   function toggleLang() {
     const next: Lang = lang === "en" ? "es" : "en";
-    setLang(next);
+    setLang(next); // updates localStorage + cookie
     setLangState(next);
+    // notify other client components on the same page
+    window.dispatchEvent(new StorageEvent("storage", { key: "ck_lang", newValue: next }));
+    // re-render server components (Dashboard, Budget)
+    router.refresh();
   }
 
   function navHref(href: string) {

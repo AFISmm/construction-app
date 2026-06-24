@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
+import { t } from "@/lib/lang";
 
 interface User {
   id: number;
@@ -20,18 +22,19 @@ const ROLE_STYLE: Record<string, string> = {
 };
 
 export default function AdminPage() {
+  const lang = useLanguage();
   const [users,   setUsers]   = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
 
   async function load() {
     const res = await fetch("/api/admin/users");
-    if (res.status === 403) { setError("Admin access required."); setLoading(false); return; }
+    if (res.status === 403) { setError(t("adm_no_access", lang)); setLoading(false); return; }
     setUsers(await res.json());
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleRole(userId: number, role: string) {
     await fetch(`/api/admin/users/${userId}`, {
@@ -42,21 +45,25 @@ export default function AdminPage() {
     load();
   }
 
-  if (loading) return <p className="text-gray-400">Cargando…</p>;
+  if (loading) return <p className="text-gray-400">{t("lbl_loading", lang)}</p>;
   if (error)   return <div className="bg-red-900/20 border border-red-700/40 rounded-xl p-6 text-red-400">{error}</div>;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
-          <p className="text-gray-400 text-sm mt-0.5">{users.length} registered users</p>
+          <h1 className="text-2xl font-bold text-white">{t("adm_title", lang)}</h1>
+          <p className="text-gray-400 text-sm mt-0.5">{users.length} {t("adm_count", lang)}</p>
         </div>
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_auto] gap-4 px-4 py-3 border-b border-gray-800 text-xs text-gray-400 uppercase tracking-wider">
-          <span>User</span><span>Username</span><span>Role</span><span>Joined</span><span className="w-32" />
+          <span>{t("adm_col_user",     lang)}</span>
+          <span>{t("adm_col_username", lang)}</span>
+          <span>{t("adm_col_role",     lang)}</span>
+          <span>{t("adm_col_joined",   lang)}</span>
+          <span className="w-32" />
         </div>
         {users.map(u => (
           <div key={u.id} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_auto] gap-4 px-4 py-2.5 border-t border-gray-800/50 text-sm items-center hover:bg-gray-800/20">
