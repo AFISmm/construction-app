@@ -2,6 +2,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = await getSession();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const perm = await prisma.user_permissions.findUnique({ where: { user_id: user.id } });
+  if (perm?.role !== "superadmin") {
+    return NextResponse.json({ error: "Only superadmin can delete users" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const targetId = parseInt(id);
+
+  // Prevent self-deletion
+  if (targetId === user.id) {
+    return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 });
+  }
+
+  // Delete in FK order
+  await prisma.user_permissions.deleteMany({ where: { user_id: targetId } });
+  await prisma.user_passwords.deleteMany({ where: { user_id: targetId } });
+  await prisma.users.delete({ where: { id: targetId } });
+
+  return NextResponse.json({ ok: true });
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

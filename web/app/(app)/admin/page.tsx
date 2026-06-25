@@ -134,6 +134,10 @@ export default function AdminPage() {
   const [savedEd,   setSavedEd]   = useState<number | null>(null);
   const [editErr,   setEditErr]   = useState<string | null>(null);
 
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [deleting,      setDeleting]      = useState<number | null>(null);
+  const [deleteErr,     setDeleteErr]     = useState<string | null>(null);
+
   // ── Load ──────────────────────────────────────────────────────────────────
 
   async function load() {
@@ -225,6 +229,21 @@ export default function AdminPage() {
     } else {
       setSavedEd(uid);
       setTimeout(() => setSavedEd(null), 2500);
+      load();
+    }
+  }
+
+  async function deleteUser(uid: number) {
+    setDeleteErr(null);
+    setDeleting(uid);
+    const res = await fetch(`/api/admin/users/${uid}`, { method: "DELETE" });
+    setDeleting(null);
+    if (!res.ok) {
+      const b = await res.json();
+      setDeleteErr(b.error ?? "Error");
+    } else {
+      setConfirmDelete(null);
+      setEditOpen(null);
       load();
     }
   }
@@ -457,8 +476,33 @@ export default function AdminPage() {
                             </div>
                           </div>
 
-                          <div className="mt-3 pt-3 border-t border-gray-800 flex justify-end">
-                            <button onClick={() => setEditOpen(null)}
+                          <div className="mt-3 pt-3 border-t border-gray-800 flex items-center justify-between">
+                            {/* Delete zone */}
+                            <div className="flex items-center gap-2">
+                              {confirmDelete === u.id ? (
+                                <>
+                                  <span className="text-xs text-red-400 font-medium">
+                                    {lang === "es" ? "¿Confirmar eliminación?" : "Confirm delete?"}
+                                  </span>
+                                  <button onClick={() => deleteUser(u.id)} disabled={deleting === u.id}
+                                    className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                                    {deleting === u.id ? "…" : (lang === "es" ? "Sí, eliminar" : "Yes, delete")}
+                                  </button>
+                                  <button onClick={() => { setConfirmDelete(null); setDeleteErr(null); }}
+                                    className="text-gray-500 hover:text-gray-300 text-xs px-3 py-1.5 border border-gray-700 rounded-lg">
+                                    {lang === "es" ? "Cancelar" : "Cancel"}
+                                  </button>
+                                  {deleteErr && <span className="text-red-400 text-xs">{deleteErr}</span>}
+                                </>
+                              ) : (
+                                <button onClick={() => { setConfirmDelete(u.id); setDeleteErr(null); }}
+                                  className="text-red-500 hover:text-red-400 hover:bg-red-500/10 border border-red-500/30 hover:border-red-500/60 text-xs px-3 py-1.5 rounded-lg transition-colors">
+                                  {lang === "es" ? "Eliminar usuario" : "Delete user"}
+                                </button>
+                              )}
+                            </div>
+
+                            <button onClick={() => { setEditOpen(null); setConfirmDelete(null); }}
                               className="text-gray-500 hover:text-gray-300 text-xs">
                               {lang === "es" ? "Cerrar" : "Close"} ▲
                             </button>
