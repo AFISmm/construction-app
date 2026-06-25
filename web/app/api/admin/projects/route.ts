@@ -11,24 +11,9 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const users = await prisma.users.findMany({
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      first_name: true,
-      last_name: true,
-      created_at: true,
-      user_permissions: {
-        select: {
-          role: true,
-          allowed_pages: true,
-          allowed_project_ids: true,
-          is_budget_approver: true,
-        },
-      },
-    },
-    orderBy: { created_at: "asc" },
+  const projects = await prisma.projects.findMany({
+    select: { id: true, name: true, group_name: true },
+    orderBy: [{ group_name: "asc" }, { name: "asc" }],
   });
-  return NextResponse.json(users);
+  return NextResponse.json(projects);
 }

@@ -10,40 +10,69 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const perm = await prisma.user_permissions.findUnique({ where: { user_id: user.id } });
-  if (perm?.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!["admin", "superadmin"].includes(perm?.role ?? "")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id } = await params;
-  const { role, is_budget_approver, allowed_pages } = await req.json();
   const targetId = parseInt(id);
+  const body = await req.json();
   const now = new Date();
 
-  // allowed_pages: null means all access; array means restricted
-  const pagesValue = allowed_pages === null
-    ? null
-    : JSON.stringify(allowed_pages);
-
-  const existing = await prisma.user_permissions.findUnique({ where: { user_id: targetId } });
-  if (existing) {
-    await prisma.user_permissions.update({
-      where: { user_id: targetId },
-      data: {
-        role,
-        is_budget_approver: is_budget_approver ?? false,
-        allowed_pages: pagesValue,
-        updated_at: now,
-      },
-    });
-  } else {
-    await prisma.user_permissions.create({
-      data: {
-        user_id: targetId,
-        role,
-        is_budget_approver: is_budget_approver ?? false,
-        allowed_pages: pagesValue,
-        created_at: now,
-        updated_at: now,
-      },
-    });
+  // Update username if provided
+  if (body.username !== undefined) {
+    const trimmed = (body.username as string).trim();
+    if (trimmed) {
+      // check uniqueness
+      const conflict = await prisma.users.findFirst({
+        where: { username: trimmed, id: { not: targetId } },
+      });
+      if (conflict) {
+        return NextResponse.json({ error: "Username already taken" }, { status: 409 });
+      }
+      await prisma.users.update({
+        where: { id: targetId },
+        data: { username: trimmed },
+      });
+    }
   }
+
+  // Update permissions if role/pages/approver provided
+  if (body.role !== undefined || body.allowed_pages !== undefined || body.is_budget_approver !== undefined || body.allowed_project_ids !== undefined) {
+    const pagesValue = body.allowed_pages === null
+      ? null
+      : body.allowed_pages !== undefined ? JSON.stringify(body.allowed_pages) : undefined;
+
+    const projectsValue = body.allowed_project_ids === null
+      ? null
+      : body.allowed_project_ids !== undefined ? JSON.stringify(body.allowed_project_ids) : undefined;
+
+    const existing = await prisma.user_permissions.findUnique({ where: { user_id: targetId } });
+    if (existing) {
+      await prisma.user_permissions.update({
+        where: { user_id: targetId },
+        data: {
+          ...(body.role !== undefined            && { role: body.role }),
+          ...(body.is_budget_approver !== undefined && { is_budget_approver: body.is_budget_approver }),
+          ...(pagesValue    !== undefined        && { allowed_pages: pagesValue }),
+          ...(projectsValue !== undefined        && { allowed_project_ids: projectsValue }),
+          updated_at: now,
+        },
+      });
+    } else {
+      await prisma.user_permissions.create({
+        data: {
+          user_id:            targetId,
+          role:               body.role ?? "standard",
+          is_budget_approver: body.is_budget_approver ?? false,
+          allowed_pages:      pagesValue ?? null,
+          allowed_project_ids: projectsValue ?? null,
+          created_at: now,
+          updated_at: now,
+        },
+      });
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
