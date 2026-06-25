@@ -12,7 +12,6 @@ export async function GET() {
   }
 
   const projects = await prisma.projects.findMany({
-    where: { group_name: { not: null } },
     select: { id: true, name: true, group_name: true },
     orderBy: [{ group_name: "asc" }, { name: "asc" }],
   });

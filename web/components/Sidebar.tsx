@@ -26,7 +26,7 @@ export default function Sidebar({ userDisplay }: { userDisplay: string }) {
       if (id && data.length > 0) {
         const match = data.find(p => p.id === id) ?? data[0];
         setProjectId(match.id);
-        setSelectedGroup(match.group_name ?? groupList(data)[0] ?? "");
+        setSelectedGroup(groupOf(match));
         localStorage.setItem("projectId", String(match.id));
         if (!pidFromUrl) router.replace(`${pathname}?pid=${match.id}`);
       }
@@ -34,12 +34,17 @@ export default function Sidebar({ userDisplay }: { userDisplay: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Use project name as group label when group_name is null
+  function groupOf(p: Project): string {
+    return p.group_name ?? p.name;
+  }
+
   function groupList(list: Project[]): string[] {
-    return [...new Set(list.map(p => p.group_name ?? "").filter(Boolean))].sort();
+    return [...new Set(list.map(groupOf))].sort();
   }
 
   function projectsInGroup(group: string): Project[] {
-    return projects.filter(p => p.group_name === group);
+    return projects.filter(p => groupOf(p) === group);
   }
 
   function handleGroupChange(group: string) {

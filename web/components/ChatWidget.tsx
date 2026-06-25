@@ -42,10 +42,6 @@ export default function ChatWidget() {
     setError(null);
     setLoading(true);
 
-    // Placeholder for streaming assistant response
-    const assistantPlaceholder: Message = { role: "assistant", content: "" };
-    setMessages(m => [...m, assistantPlaceholder]);
-
     abortRef.current = new AbortController();
 
     try {
@@ -56,26 +52,19 @@ export default function ChatWidget() {
         signal: abortRef.current.signal,
       });
 
-      if (!res.ok || !res.body) throw new Error("Request failed");
+      const data = await res.json();
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        accumulated += decoder.decode(value, { stream: true });
-        setMessages(m => {
-          const copy = [...m];
-          copy[copy.length - 1] = { role: "assistant", content: accumulated };
-          return copy;
-        });
+      if (!res.ok) {
+        setError(data?.error ?? t("chat_error", lang));
+        return;
       }
+
+      const assistantMsg: Message = { role: "assistant", content: data.text ?? "" };
+      setMessages(m => [...m, assistantMsg]);
+
     } catch (e: unknown) {
       if (e instanceof Error && e.name === "AbortError") return;
       setError(t("chat_error", lang));
-      setMessages(m => m.slice(0, -1)); // remove empty placeholder
     } finally {
       setLoading(false);
       abortRef.current = null;
@@ -170,18 +159,22 @@ export default function ChatWidget() {
                       : "bg-gray-800 text-gray-200 rounded-bl-sm"
                   }`}
                 >
-                  {msg.content || (
-                    loading && i === messages.length - 1 ? (
-                      <span className="flex gap-1 items-center py-0.5">
-                        <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                      </span>
-                    ) : null
-                  )}
+                  {msg.content}
                 </div>
               </div>
             ))}
+
+            {loading && (
+              <div className="flex justify-start">
+                <div className="bg-gray-800 px-3 py-2 rounded-2xl rounded-bl-sm">
+                  <span className="flex gap-1 items-center py-0.5">
+                    <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </span>
+                </div>
+              </div>
+            )}
 
             {error && (
               <p className="text-red-400 text-xs text-center">{error}</p>
