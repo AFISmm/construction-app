@@ -93,7 +93,7 @@ export default function Sidebar({ userDisplay }: { userDisplay: string }) {
       {/* Header */}
       <div className="p-4 border-b border-gray-800 flex items-center justify-between">
         <h2 className="text-sm font-bold text-orange-400 uppercase tracking-wider">
-          Construction Budget
+          {t("app_title", lang)}
         </h2>
         <button
           onClick={toggleLang}
@@ -106,7 +106,7 @@ export default function Sidebar({ userDisplay }: { userDisplay: string }) {
 
       {/* Project selector */}
       <div className="p-3 border-b border-gray-800 space-y-3">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Proyectos</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t("lbl_projects", lang)}</p>
 
         <div>
           <label className="text-xs text-gray-500 mb-1 block">{t("lbl_client", lang)}</label>

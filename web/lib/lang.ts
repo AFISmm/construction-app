@@ -149,13 +149,54 @@ const T = {
   prof_fail:           { en: "Failed to save profile.", es: "Error al guardar el perfil." },
 
   // ── Admin ──
-  adm_title:           { en: "Admin Panel",         es: "Panel de Administración" },
-  adm_count:           { en: "registered users",    es: "usuarios registrados" },
-  adm_col_user:        { en: "User",                es: "Usuario" },
-  adm_col_username:    { en: "Username",            es: "Usuario" },
-  adm_col_role:        { en: "Role",                es: "Rol" },
-  adm_col_joined:      { en: "Joined",              es: "Registro" },
-  adm_no_access:       { en: "Admin access required.", es: "Se requiere acceso de administrador." },
+  adm_title:           { en: "Admin Panel",               es: "Panel de Administración" },
+  adm_count:           { en: "registered users",          es: "usuarios registrados" },
+  adm_col_user:        { en: "User",                      es: "Usuario" },
+  adm_col_username:    { en: "Username",                  es: "Usuario" },
+  adm_col_role:        { en: "Role",                      es: "Rol" },
+  adm_col_email:       { en: "Email",                     es: "Correo" },
+  adm_col_joined:      { en: "Joined",                    es: "Registro" },
+  adm_col_approver:    { en: "Approver",                  es: "Aprobador" },
+  adm_col_view:        { en: "View",                      es: "Ver" },
+  adm_col_edit:        { en: "Edit",                      es: "Edit" },
+  adm_save:            { en: "Save",                      es: "Guardar" },
+  adm_saving:          { en: "Saving…",                   es: "Guardando…" },
+  adm_saved:           { en: "Saved",                     es: "Guardado" },
+  adm_edit_user:       { en: "Edit",                      es: "Editar" },
+  adm_edit_username:   { en: "Edit Username",             es: "Editar nombre de usuario" },
+  adm_visible_proj:    { en: "Visible Projects",          es: "Proyectos visibles" },
+  adm_no_projects:     { en: "No projects found",         es: "Sin proyectos" },
+  adm_close:           { en: "Close",                     es: "Cerrar" },
+  adm_delete_user:     { en: "Delete user",               es: "Eliminar usuario" },
+  adm_confirm_delete:  { en: "Confirm delete?",           es: "¿Confirmar eliminación?" },
+  adm_yes_delete:      { en: "Yes, delete",               es: "Sí, eliminar" },
+  adm_legend_view:     { en: "View = can view module",    es: "Ver = puede ver el módulo" },
+  adm_legend_edit:     { en: "Edit = can create / modify / delete", es: "Edit = puede crear / modificar / eliminar" },
+  adm_legend_approver: { en: "Approver = can approve budgets", es: "Aprobador = puede aprobar presupuestos" },
+  adm_no_access:       { en: "Admin access required.",    es: "Se requiere acceso de administrador." },
+
+  // ── App title ──
+  app_title:           { en: "Construction Budget",       es: "Presupuesto de Obra" },
+
+  // ── Profile categories ──
+  prof_cat_gc:         { en: "General Contractor",        es: "Contratista General" },
+  prof_cat_sub:        { en: "Subcontractor",             es: "Subcontratista" },
+  prof_cat_owner:      { en: "Owner",                     es: "Propietario" },
+  prof_cat_arch:       { en: "Architect",                 es: "Arquitecto" },
+  prof_cat_eng:        { en: "Engineer",                  es: "Ingeniero" },
+  prof_cat_pm:         { en: "Project Manager",           es: "Gerente de Proyecto" },
+  prof_cat_consult:    { en: "Consultant",                es: "Consultor" },
+  prof_cat_supplier:   { en: "Supplier",                  es: "Proveedor" },
+  prof_cat_other:      { en: "Other",                     es: "Otro" },
+
+  // ── Chat widget ──
+  chat_title:          { en: "CK Assistant",              es: "CK Asistente" },
+  chat_subtitle:       { en: "Ask anything about the app", es: "Pregunta lo que quieras sobre la app" },
+  chat_placeholder:    { en: "How can I help you?",       es: "¿En qué te puedo ayudar?" },
+  chat_send:           { en: "Send",                      es: "Enviar" },
+  chat_thinking:       { en: "Thinking…",                 es: "Pensando…" },
+  chat_error:          { en: "Error generating response. Try again.", es: "Error generando respuesta. Intenta de nuevo." },
+  chat_welcome:        { en: "Hi! I'm CK Assistant. I can help you navigate the app, understand modules, and answer any questions.", es: "¡Hola! Soy CK Asistente. Te ayudo a navegar la app, entender los módulos y responder cualquier pregunta." },
 } as const;
 
 export type TKey = keyof typeof T;

@@ -13,9 +13,16 @@ interface Profile {
   category: string;
 }
 
-const CATEGORIES = [
-  "General Contractor", "Subcontractor", "Owner", "Architect", "Engineer",
-  "Project Manager", "Consultant", "Supplier", "Other",
+const CATEGORIES: { key: string; en: string; es: string }[] = [
+  { key: "General Contractor", en: "General Contractor", es: "Contratista General" },
+  { key: "Subcontractor",      en: "Subcontractor",      es: "Subcontratista" },
+  { key: "Owner",              en: "Owner",              es: "Propietario" },
+  { key: "Architect",          en: "Architect",          es: "Arquitecto" },
+  { key: "Engineer",           en: "Engineer",           es: "Ingeniero" },
+  { key: "Project Manager",    en: "Project Manager",    es: "Gerente de Proyecto" },
+  { key: "Consultant",         en: "Consultant",         es: "Consultor" },
+  { key: "Supplier",           en: "Supplier",           es: "Proveedor" },
+  { key: "Other",              en: "Other",              es: "Otro" },
 ];
 
 const EMPTY: Profile = {
@@ -104,7 +111,7 @@ export default function ProfilePage() {
             <select required value={form.category} onChange={e => f("category", e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500">
               <option value="">{t("prof_select", lang)}</option>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {CATEGORIES.map(c => <option key={c.key} value={c.key}>{lang === "es" ? c.es : c.en}</option>)}
             </select>
           </div>
         </div>
