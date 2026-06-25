@@ -4,24 +4,25 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { t } from "@/lib/lang";
 
 const MODULES = [
-  { key: "dashboard",    labelEn: "Dashboard",   labelEs: "Dashboard" },
-  { key: "budget",       labelEn: "Budget",       labelEs: "Presupuesto" },
-  { key: "expenses",     labelEn: "Payments",     labelEs: "Pagos" },
-  { key: "vendors",      labelEn: "Vendors",      labelEs: "Proveedores" },
-  { key: "trazabilidad", labelEn: "Versioning",   labelEs: "Trazabilidad" },
-  { key: "import",       labelEn: "Import",       labelEs: "Importar" },
-  { key: "account",      labelEn: "Account",      labelEs: "Cuenta" },
-  { key: "profile",      labelEn: "Profile",      labelEs: "Perfil" },
-  { key: "admin",        labelEn: "Admin",        labelEs: "Admin" },
+  { key: "dashboard",    en: "Dashboard",     es: "Dashboard" },
+  { key: "budget",       en: "Presupuesto",   es: "Presupuesto" },
+  { key: "expenses",     en: "Pagos",         es: "Pagos" },
+  { key: "vendors",      en: "Proveedores",   es: "Proveedores" },
+  { key: "trazabilidad", en: "Trazabilidad",  es: "Trazabilidad" },
+  { key: "import",       en: "Importar",      es: "Importar" },
+  { key: "account",      en: "Cuenta",        es: "Cuenta" },
+  { key: "profile",      en: "Perfil",        es: "Perfil" },
+  { key: "admin",        en: "Admin",         es: "Admin" },
 ];
 
-const ROLES = ["standard", "admin", "viewer", "approver"];
+const ROLES = ["superadmin", "admin", "standard", "viewer", "approver"];
 
 const ROLE_STYLE: Record<string, string> = {
-  admin:    "text-orange-400 bg-orange-400/10 border-orange-400/30",
-  standard: "text-blue-400  bg-blue-400/10  border-blue-400/30",
-  viewer:   "text-gray-400  bg-gray-400/10  border-gray-400/30",
-  approver: "text-purple-400 bg-purple-400/10 border-purple-400/30",
+  superadmin: "text-red-400   bg-red-400/10   border-red-400/40",
+  admin:      "text-orange-400 bg-orange-400/10 border-orange-400/40",
+  standard:   "text-blue-400  bg-blue-400/10  border-blue-400/40",
+  viewer:     "text-gray-400  bg-gray-400/10  border-gray-400/40",
+  approver:   "text-purple-400 bg-purple-400/10 border-purple-400/40",
 };
 
 interface UserPerm {
@@ -29,7 +30,6 @@ interface UserPerm {
   allowed_pages: string | null;
   is_budget_approver: boolean | null;
 }
-
 interface User {
   id: number;
   email: string;
@@ -40,37 +40,29 @@ interface User {
   user_permissions: UserPerm | null;
 }
 
-// null allowed_pages = full access
 function parsePagesFromDB(raw: string | null): string[] | null {
   if (raw === null) return null;
   try { return JSON.parse(raw) as string[]; } catch { return null; }
 }
 
+type Draft = { role: string; is_budget_approver: boolean; allowed_pages: string[] | null };
+
 export default function AdminPage() {
   const lang = useLanguage();
 
-  const [users,    setUsers]    = useState<User[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<number | null>(null);
-
-  // draft edits per user id
-  const [drafts, setDrafts] = useState<Record<number, {
-    role: string;
-    is_budget_approver: boolean;
-    allowed_pages: string[] | null; // null = all access
-  }>>({});
-
-  const [saving, setSaving] = useState<number | null>(null);
-  const [saved,  setSaved]  = useState<number | null>(null);
+  const [users,   setUsers]   = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
+  const [drafts,  setDrafts]  = useState<Record<number, Draft>>({});
+  const [saving,  setSaving]  = useState<number | null>(null);
+  const [saved,   setSaved]   = useState<number | null>(null);
 
   async function load() {
     const res = await fetch("/api/admin/users");
     if (res.status === 403) { setError(t("adm_no_access", lang)); setLoading(false); return; }
     const data: User[] = await res.json();
     setUsers(data);
-    // initialise drafts
-    const init: typeof drafts = {};
+    const init: Record<number, Draft> = {};
     for (const u of data) {
       init[u.id] = {
         role:               u.user_permissions?.role ?? "standard",
@@ -84,45 +76,36 @@ export default function AdminPage() {
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function updateDraft(userId: number, patch: Partial<typeof drafts[number]>) {
-    setDrafts(prev => ({ ...prev, [userId]: { ...prev[userId], ...patch } }));
+  function patch(uid: number, p: Partial<Draft>) {
+    setDrafts(prev => ({ ...prev, [uid]: { ...prev[uid], ...p } }));
   }
 
-  function togglePage(userId: number, pageKey: string) {
-    const current = drafts[userId]?.allowed_pages;
-    if (current === null) {
-      // was full access → restrict to all except this one
-      const allExcept = MODULES.map(m => m.key).filter(k => k !== pageKey);
-      updateDraft(userId, { allowed_pages: allExcept });
+  function togglePage(uid: number, key: string) {
+    const cur = drafts[uid]?.allowed_pages;
+    if (cur === null) {
+      patch(uid, { allowed_pages: MODULES.map(m => m.key).filter(k => k !== key) });
     } else {
-      const next = current.includes(pageKey)
-        ? current.filter(k => k !== pageKey)
-        : [...current, pageKey];
-      // if all checked again → back to null (full access)
-      updateDraft(userId, { allowed_pages: next.length === MODULES.length ? null : next });
+      const next = cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key];
+      patch(uid, { allowed_pages: next.length === MODULES.length ? null : next });
     }
   }
 
-  function isPageAllowed(userId: number, pageKey: string): boolean {
-    const pages = drafts[userId]?.allowed_pages;
-    return pages === null || pages.includes(pageKey);
+  function isAllowed(uid: number, key: string) {
+    const p = drafts[uid]?.allowed_pages;
+    return p === null || p.includes(key);
   }
 
-  async function handleSave(userId: number) {
-    const d = drafts[userId];
+  async function save(uid: number) {
+    const d = drafts[uid];
     if (!d) return;
-    setSaving(userId);
-    await fetch(`/api/admin/users/${userId}`, {
+    setSaving(uid);
+    await fetch(`/api/admin/users/${uid}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        role:               d.role,
-        is_budget_approver: d.is_budget_approver,
-        allowed_pages:      d.allowed_pages,
-      }),
+      body: JSON.stringify({ role: d.role, is_budget_approver: d.is_budget_approver, allowed_pages: d.allowed_pages }),
     });
     setSaving(null);
-    setSaved(userId);
+    setSaved(uid);
     setTimeout(() => setSaved(null), 2000);
     load();
   }
@@ -132,130 +115,119 @@ export default function AdminPage() {
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-5">
         <h1 className="text-2xl font-bold text-white">{t("adm_title", lang)}</h1>
         <p className="text-gray-400 text-sm mt-0.5">{users.length} {t("adm_count", lang)}</p>
       </div>
 
-      <div className="space-y-2">
-        {users.map(u => {
-          const d = drafts[u.id] ?? { role: "standard", is_budget_approver: false, allowed_pages: null };
-          const isOpen = expanded === u.id;
-          const displayName = u.first_name && u.last_name
-            ? `${u.first_name} ${u.last_name}`
-            : u.username ?? u.email;
-
-          return (
-            <div key={u.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-              {/* Row */}
-              <div className="grid grid-cols-[2fr_1.5fr_1fr_auto_auto] gap-4 px-4 py-3 items-center">
-                {/* User info */}
-                <div>
-                  <p className="text-gray-100 font-medium text-sm">{displayName}</p>
-                  <p className="text-gray-500 text-xs truncate">{u.email}</p>
-                </div>
-
-                {/* Username */}
-                <span className="text-gray-400 text-sm font-mono">{u.username ?? "—"}</span>
-
-                {/* Role dropdown */}
-                <select
-                  value={d.role}
-                  onChange={e => updateDraft(u.id, { role: e.target.value })}
-                  className={`text-xs font-semibold rounded-lg px-2 py-1.5 border cursor-pointer focus:outline-none focus:border-orange-500 bg-transparent ${ROLE_STYLE[d.role] ?? ""}`}
-                >
-                  {ROLES.map(r => <option key={r} value={r} className="bg-gray-900 text-white">{r}</option>)}
-                </select>
-
-                {/* Approver checkbox */}
-                <label className="flex items-center gap-2 cursor-pointer select-none" title={lang === "es" ? "Aprobador de presupuesto" : "Budget approver"}>
-                  <input
-                    type="checkbox"
-                    checked={d.is_budget_approver}
-                    onChange={e => updateDraft(u.id, { is_budget_approver: e.target.checked })}
-                    className="w-4 h-4 accent-orange-500 cursor-pointer"
-                  />
-                  <span className="text-xs text-gray-400 hidden lg:block">
-                    {lang === "es" ? "Aprobador" : "Approver"}
-                  </span>
-                </label>
-
-                {/* Expand button */}
-                <button
-                  onClick={() => setExpanded(isOpen ? null : u.id)}
-                  className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                    isOpen
-                      ? "border-orange-500 text-orange-400 bg-orange-500/10"
-                      : "border-gray-700 text-gray-400 hover:border-gray-500"
-                  }`}
-                >
-                  {lang === "es" ? "Módulos" : "Modules"} {isOpen ? "▲" : "▼"}
-                </button>
-              </div>
-
-              {/* Expanded: module permissions */}
-              {isOpen && (
-                <div className="border-t border-gray-800 px-4 py-4 bg-gray-800/20">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">
-                    {lang === "es" ? "Módulos permitidos" : "Allowed modules"}
-                    <span className="ml-2 text-gray-600 normal-case">
-                      ({lang === "es" ? "desmarca para restringir acceso" : "uncheck to restrict access"})
+      <div className="overflow-x-auto rounded-xl border border-gray-800">
+        <table className="w-full text-sm border-collapse" style={{ minWidth: "1000px" }}>
+          {/* Header */}
+          <thead>
+            <tr className="bg-gray-900 border-b border-gray-800">
+              <th className="text-left px-3 py-3 text-xs text-gray-400 uppercase tracking-wider font-semibold w-48">
+                {lang === "es" ? "Correo" : "Email"}
+              </th>
+              <th className="text-left px-3 py-3 text-xs text-gray-400 uppercase tracking-wider font-semibold w-32">
+                {lang === "es" ? "Usuario" : "Username"}
+              </th>
+              <th className="text-left px-3 py-3 text-xs text-gray-400 uppercase tracking-wider font-semibold w-32">
+                {lang === "es" ? "Rol" : "Role"}
+              </th>
+              {MODULES.map(m => (
+                <th key={m.key} className="text-center px-2 py-3 text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", fontSize: "10px" }}>
+                      {lang === "es" ? m.es : m.en}
                     </span>
-                  </p>
-
-                  <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 mb-4">
-                    {MODULES.map(m => {
-                      const allowed = isPageAllowed(u.id, m.key);
-                      return (
-                        <label
-                          key={m.key}
-                          className={`flex items-center gap-2 cursor-pointer rounded-lg border px-3 py-2 transition-colors select-none ${
-                            allowed
-                              ? "border-orange-500/40 bg-orange-500/5 text-gray-200"
-                              : "border-gray-700 bg-gray-800/40 text-gray-500"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={allowed}
-                            onChange={() => togglePage(u.id, m.key)}
-                            className="w-3.5 h-3.5 accent-orange-500 cursor-pointer flex-shrink-0"
-                          />
-                          <span className="text-xs font-medium">
-                            {lang === "es" ? m.labelEs : m.labelEn}
-                          </span>
-                        </label>
-                      );
-                    })}
                   </div>
-
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => handleSave(u.id)}
-                      disabled={saving === u.id}
-                      className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors"
-                    >
-                      {saving === u.id
-                        ? (lang === "es" ? "Guardando…" : "Saving…")
-                        : (lang === "es" ? "Guardar cambios" : "Save changes")}
-                    </button>
-                    {saved === u.id && (
-                      <span className="text-green-400 text-sm">
-                        {lang === "es" ? "✓ Guardado" : "✓ Saved"}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => setExpanded(null)}
-                      className="text-gray-500 hover:text-gray-300 text-sm ml-auto"
-                    >
-                      {lang === "es" ? "Cerrar" : "Close"}
-                    </button>
-                  </div>
+                </th>
+              ))}
+              <th className="text-center px-2 py-3 text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                <div style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", fontSize: "10px" }}>
+                  {lang === "es" ? "Aprobador" : "Approver"}
                 </div>
-              )}
-            </div>
-          );
-        })}
+              </th>
+              <th className="px-3 py-3 w-24" />
+            </tr>
+          </thead>
+
+          {/* Rows */}
+          <tbody>
+            {users.map((u, idx) => {
+              const d = drafts[u.id] ?? { role: "standard", is_budget_approver: false, allowed_pages: null };
+              const isEven = idx % 2 === 0;
+              return (
+                <tr
+                  key={u.id}
+                  className={`border-b border-gray-800/60 transition-colors hover:bg-gray-800/30 ${isEven ? "bg-gray-900" : "bg-gray-900/60"}`}
+                >
+                  {/* Email */}
+                  <td className="px-3 py-2.5">
+                    <p className="text-gray-200 text-xs truncate max-w-[180px]" title={u.email}>{u.email}</p>
+                  </td>
+
+                  {/* Username */}
+                  <td className="px-3 py-2.5">
+                    <span className="text-gray-300 font-mono text-xs">{u.username ?? "—"}</span>
+                  </td>
+
+                  {/* Role */}
+                  <td className="px-3 py-2.5">
+                    <select
+                      value={d.role}
+                      onChange={e => patch(u.id, { role: e.target.value })}
+                      className={`text-xs font-semibold rounded-lg px-2 py-1 border cursor-pointer focus:outline-none focus:border-orange-500 bg-transparent w-full ${ROLE_STYLE[d.role] ?? ROLE_STYLE.standard}`}
+                    >
+                      {ROLES.map(r => (
+                        <option key={r} value={r} className="bg-gray-900 text-white">{r}</option>
+                      ))}
+                    </select>
+                  </td>
+
+                  {/* Module checkboxes */}
+                  {MODULES.map(m => (
+                    <td key={m.key} className="px-2 py-2.5 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isAllowed(u.id, m.key)}
+                        onChange={() => togglePage(u.id, m.key)}
+                        className="w-4 h-4 accent-orange-500 cursor-pointer"
+                      />
+                    </td>
+                  ))}
+
+                  {/* Approver checkbox */}
+                  <td className="px-2 py-2.5 text-center">
+                    <input
+                      type="checkbox"
+                      checked={d.is_budget_approver}
+                      onChange={e => patch(u.id, { is_budget_approver: e.target.checked })}
+                      className="w-4 h-4 accent-orange-500 cursor-pointer"
+                    />
+                  </td>
+
+                  {/* Save */}
+                  <td className="px-3 py-2.5 text-center">
+                    {saved === u.id ? (
+                      <span className="text-green-400 text-xs font-semibold">✓</span>
+                    ) : (
+                      <button
+                        onClick={() => save(u.id)}
+                        disabled={saving === u.id}
+                        className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                      >
+                        {saving === u.id
+                          ? "…"
+                          : (lang === "es" ? "Guardar" : "Save")}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
