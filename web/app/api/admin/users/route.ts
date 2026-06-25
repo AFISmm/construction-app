@@ -17,7 +17,14 @@ export async function GET() {
       first_name: true,
       last_name: true,
       created_at: true,
-      user_permissions: { select: { role: true } },
+      user_permissions: {
+        select: {
+          role: true,
+          allowed_pages: true,
+          is_budget_approver: true,
+          approval_modules: true,
+        },
+      },
     },
     orderBy: { created_at: "asc" },
   });
