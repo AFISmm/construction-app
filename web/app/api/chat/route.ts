@@ -1,43 +1,25 @@
 import { NextRequest } from "next/server";
-import OpenAI from "openai";
 import { getSession } from "@/lib/auth";
 
-const client = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL ?? "https://construction-app.vercel.app",
-    "X-Title": "CK Construction Budget App",
-  },
-});
+const SYSTEM_PROMPT = `You are CK Assistant, an expert AI embedded inside the Chicken Kitchen Construction Budget App. You help users navigate, understand, and get the most out of the app.
 
-const SYSTEM_PROMPT = `You are CK Assistant, an expert AI embedded inside the Chicken Kitchen Construction Budget App (ConstructionApp). You help users navigate, understand, and get the most out of the app.
+## App Modules
+- Dashboard: budget vs. actual spend overview, charts
+- Budget (Presupuesto): budget lines per category, inline editing
+- Payments (Pagos): record actual expenses, link to budget line and vendor
+- Vendors (Proveedores): manage contractors/suppliers, track status
+- Versioning (Trazabilidad): save budget snapshots, compare versions
+- Import (Importar): upload CSV to bulk-import budget lines
+- Account (Cuenta): change password
+- Profile (Perfil): company info, contact details
+- Admin: manage users, roles, module permissions, project visibility
 
-## About the App
-A web application for managing construction project budgets. Key modules:
-- **Dashboard**: Overview of budget vs. actual spend per project, charts, summary cards
-- **Budget (Presupuesto)**: Budget lines per category (labor, materials, etc.), inline editing, totals
-- **Payments (Pagos/Expenses)**: Record actual expenses, link to budget line, vendor, attach notes
-- **Vendors (Proveedores)**: Manage contractors and suppliers, track status (active/inactive/pending)
-- **Versioning (Trazabilidad)**: Create snapshots of the budget at any point in time; compare versions
-- **Import (Importar)**: Upload CSV files to bulk-import budget lines using category codes
-- **Account (Cuenta)**: Change password
-- **Profile (Perfil)**: Edit company name, contact info, role category
-- **Admin**: Manage users — assign roles, set per-module view/edit permissions, project visibility, delete users
-
-## Roles
-- superadmin: full access, can delete users
-- admin: manage users and all modules
-- standard: normal user, access per permissions
-- viewer: read-only access per permissions
-- approver: can approve budget versions
+## Roles: superadmin, admin, standard, viewer, approver
 
 ## Guidelines
-- Be concise and practical. Give step-by-step instructions when guiding users through the UI.
-- If asked about something outside the app scope, briefly acknowledge and redirect to what you can help with.
-- Never expose internal API routes, database credentials, or sensitive implementation details.
-- If a user reports a bug, acknowledge it and suggest they refresh or contact the admin.
-- Respond in the same language the user writes in (Spanish or English).`;
+- Be concise and practical with step-by-step UI instructions when helpful.
+- Respond in the same language the user writes in (Spanish or English).
+- Never expose API routes, credentials, or internal implementation details.`;
 
 export async function POST(req: NextRequest) {
   const user = await getSession();
@@ -47,27 +29,69 @@ export async function POST(req: NextRequest) {
   const messages: { role: "user" | "assistant"; content: string }[] = body.messages ?? [];
   if (!messages.length) return new Response("No messages", { status: 400 });
 
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    return new Response("OPENROUTER_API_KEY not configured", { status: 500 });
+  }
+
+  const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://construction-app-weld.vercel.app",
+      "X-Title": "CK Construction Budget App",
+    },
+    body: JSON.stringify({
+      model: "meta-llama/llama-3.1-8b-instruct:free",
+      stream: true,
+      max_tokens: 1024,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...messages,
+      ],
+    }),
+  });
+
+  if (!orRes.ok || !orRes.body) {
+    const errText = await orRes.text().catch(() => "unknown error");
+    console.error("OpenRouter error:", orRes.status, errText);
+    return new Response(`OpenRouter error: ${orRes.status}`, { status: 502 });
+  }
+
+  // Transform OpenRouter SSE → plain text stream
   const encoder = new TextEncoder();
+  const reader  = orRes.body.getReader();
+  const decoder = new TextDecoder();
+  let   buffer  = "";
+
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const response = await client.chat.completions.create({
-          model: "meta-llama/llama-3.1-8b-instruct:free",
-          max_tokens: 1024,
-          stream: true,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            ...messages,
-          ],
-        });
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        for await (const chunk of response) {
-          const text = chunk.choices[0]?.delta?.content ?? "";
-          if (text) controller.enqueue(encoder.encode(text));
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? ""; // keep incomplete last line
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data:")) continue;
+            const data = trimmed.slice(5).trim();
+            if (data === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(data);
+              const text = parsed.choices?.[0]?.delta?.content ?? "";
+              if (text) controller.enqueue(encoder.encode(text));
+            } catch {
+              // skip malformed chunks
+            }
+          }
         }
       } catch (err) {
-        console.error("Chat stream error:", err);
-        controller.enqueue(encoder.encode("\n[Error generating response]"));
+        console.error("Stream read error:", err);
       } finally {
         controller.close();
       }
@@ -77,8 +101,8 @@ export async function POST(req: NextRequest) {
   return new Response(stream, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
-      "Transfer-Encoding": "chunked",
       "Cache-Control": "no-cache",
+      "X-Accel-Buffering": "no",
     },
   });
 }
